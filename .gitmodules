@@ -1,3 +1,6 @@
 [submodule "external/ftxui"]
 	path = external/ftxui
 	url = https://github.com/ArthurSonzogni/ftxui
+[submodule "external/SQLiteCpp"]
+	path = external/SQLiteCpp
+	url = https://github.com/SRombauts/SQLiteCpp.git
