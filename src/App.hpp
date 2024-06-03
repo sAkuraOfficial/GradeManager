@@ -7,16 +7,25 @@
 #include <iostream>
 
 #include "Account.hpp"
+#include "Sql_db.hpp"
 using namespace ftxui;
 class App
 {
   private:
+    Sql_db *sql_db;
     Account account;
 
   public:
     App();
     ~App();
     void login();
-    void reg();
+    void reg(bool &reg_result);
     void main_menu();
+};
+
+enum sex
+{
+    none,
+    male,
+    female
 };

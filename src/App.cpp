@@ -1,5 +1,6 @@
 ﻿#include "App.hpp"
 App::App()
+    : sql_db(new Sql_db()), account(sql_db)
 {
 }
 
@@ -12,14 +13,28 @@ void App::login()
     auto screen = ScreenInteractive::TerminalOutput();
 
     std::string user_id, user_pwd;
+    std::string message = "请登录......";
+    bool reg_result = false;
+
     auto btn1 = Button(
         "登录", [&] {
-            main_menu();
+            if (account.user_login(user_id, user_pwd))
+            {
+                main_menu();
+            }
+            else
+            {
+                message = "登录失败，请检查账号密码";
+            }
         }
     );
     auto btn2 = Button(
         "注册", [&] {
-            reg();
+            reg(reg_result);
+            if (reg_result)
+            {
+                message = "注册成功，请登录";
+            }
         }
     );
     auto btn3 = Button(
@@ -43,6 +58,7 @@ void App::login()
                 separator(),
                 hbox({text("账号: "), input1->Render()}) | center,
                 hbox({text("密码: "), input2->Render()}) | center,
+                text(message),
                 separator(),
                 hbox({btn1->Render(), btn2->Render(), btn3->Render()}) | center,
             }
@@ -68,19 +84,31 @@ void App::login()
     screen.Loop(component);
 }
 
-void App::reg()
+void App::reg(bool &reg_result)
 {
     auto screen = ScreenInteractive::TerminalOutput();
 
-    std::string user_id, user_pwd;
+    bool user_type = false;
+
+    std::string user_id, user_pwd, user_name, citizen_id;
+    std::string reg_message = "请注册......";
     auto btn1 = Button(
         "确认注册", [&] {
-            screen.Exit();
+            if (account.user_register(user_id, user_pwd, user_name))
+            {
+                screen.Exit();
+                reg_result = true;
+            }
+            else
+            {
+                reg_message = "注册失败，账号重复";
+            }
         }
     );
     auto btn2 = Button(
         "返回", [&] {
             screen.Exit();
+            reg_result = false;
         }
     );
 
@@ -92,8 +120,9 @@ void App::reg()
 
     auto input1 = Input(&user_id, "请输入账号") | size(WIDTH, EQUAL, 20);
     auto input2 = Input(&user_pwd, "请输入密码", password_input_option) | size(WIDTH, EQUAL, 20);
+    auto input3 = Input(&user_name, "请输入姓名") | size(WIDTH, EQUAL, 20);
 
-    auto childs = Container::Vertical({input1, input2, btn1, btn2});
+    auto childs = Container::Vertical({input1, input2, input3, btn1, btn2});
 
     auto component = Renderer(childs, [&] {
         auto child_box1 = vbox(
@@ -102,6 +131,8 @@ void App::reg()
                 separator(),
                 hbox({text("账号: "), input1->Render()}) | center,
                 hbox({text("密码: "), input2->Render()}) | center,
+                hbox({text("姓名: "), input3->Render()}) | center,
+                text(reg_message),
                 separator(),
                 hbox({btn1->Render(), btn2->Render()}) | center,
             }
@@ -164,7 +195,7 @@ void App::main_menu()
     auto component = Renderer(childs, [&] {
         auto father_box = vbox(
             {
-                text("学生管理系统") | center | color(Color::Yellow),
+                text("成绩管理系统") | center | color(Color::Yellow),
                 separator(),
                 vbox({main_menu->Render()}) | center,
                 vbox({main_menu_tab->Render()}),
