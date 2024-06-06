@@ -21,11 +21,19 @@ class App
     void login();
     void reg(bool &reg_result);
     void main_menu();
+     Component menu_grade_add();
 };
 
 enum sex
 {
-    none,
+    noneSex,
     male,
     female
+};
+
+enum user_type
+{
+    noneType,
+    student,
+    teacher,
 };

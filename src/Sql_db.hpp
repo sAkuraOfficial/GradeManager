@@ -11,5 +11,6 @@ class Sql_db
     Sql_db();
     ~Sql_db();
     bool login(std::string user_id, std::string user_pwd, std::string &user_name);
-    bool reg(std::string user_id,std::string user_pwd,std::string user_name);
+    bool reg(std::string user_id, std::string user_pwd, std::string user_name);
+    bool get_all_courses(std::vector<std::string> &courses);
 };

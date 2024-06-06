@@ -52,3 +52,23 @@ bool Sql_db::reg(std::string user_id, std::string user_pwd, std::string user_nam
         return false;
     }
 }
+
+bool Sql_db::get_all_courses(std::vector<std::string> &courses)
+{
+    try
+    {
+        SQLite::Statement query(*db, "SELECT * FROM Course");
+        std::vector<std::string> result_courses;
+        while (query.executeStep())
+        {
+            std::string course_name = query.getColumn("course_name");
+            result_courses.push_back(course_name);
+        }
+        courses = result_courses;
+        return true;
+    }
+    catch (const std::exception &)
+    {
+        return false;
+    }
+}
