@@ -56,6 +56,16 @@ void App::login()
     InputOption input2_option;
     input2_option.password = true;
     input2_option.multiline = false;
+    input2_option.on_enter = [&] {
+        if (account.user_login(user_id, user_pwd))
+        {
+            main_menu();
+        }
+        else
+        {
+            message = "登录失败，请检查账号密码";
+        }
+    };
 
     auto input1 = Input(&user_id, "请输入账号", {.multiline = false}) | size(WIDTH, EQUAL, 20);
     auto input2 = Input(&user_pwd, "请输入密码", input2_option) | size(WIDTH, EQUAL, 20);
@@ -250,6 +260,7 @@ Component App::menu_grade_add()
     static std::string user_id = "";                 // 用于存储教师id
     static student_ student_selected = {};           // 用于存储选中了的学生信息
     static std::string result_message = "请输入..."; // 通知
+    static float show_grade_total = 0.0f;            // 用于在标题中显示总分
 
     account.get_user_id(user_id);
     sql_db->get_user_courses(user_id, result_course);
@@ -338,6 +349,7 @@ Component App::menu_grade_add()
     InputOption input_option;
     input_option.multiline=false;
     input_option.on_change = [&]() {
+        // 只允许输入数字和小数点
         input1_value.erase(
             std::remove_if(
                 input1_value.begin(),input1_value.end(),
@@ -345,7 +357,19 @@ Component App::menu_grade_add()
             ),
             input1_value.end()
         );
-    };// 只允许输入数字和小数点
+         input2_value.erase(
+            std::remove_if(
+                input2_value.begin(),input2_value.end(),
+                [](char c) {return !std::isdigit(c) && c != '.';}
+            ),
+            input2_value.end()
+        );
+        //每次输入后,自动计算总分
+        float grade_daily_percent = result_course[lesson_select].grade_daily_percent;
+        float grade_daily = input1_value== "" ? 0.0f: std::stof(input1_value);//防止出错
+        float grade_final = input2_value== "" ? 0.0f: std::stof(input2_value);
+        show_grade_total = grade_daily * grade_daily_percent + grade_final * (1 - grade_daily_percent);
+    };
     static auto input1 = Input(&input1_value, "请输入平时分", input_option) | size(WIDTH, EQUAL, 20);
     // 期末分输入
     static auto input2 = Input(&input2_value, "请输入期末分", input_option) | size(WIDTH, EQUAL, 20);
@@ -414,7 +438,7 @@ Component App::menu_grade_add()
                 text("系统将按照学科预设的比例计算总分") | center,
                 text(result_message),
                 separator(),
-                hbox({text("😍 总分: "), text(std::to_string(lesson_select)) | color(Color::Blue)}) | center,
+                hbox({text("😍 总分: "), text(std::to_string(show_grade_total)) | color(Color::Blue)}) | center,
                 hbox({button1->Render(), button2->Render()}) | center,
             }
         );
