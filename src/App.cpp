@@ -194,8 +194,9 @@ void App::main_menu()
     int menu_items_selected = 0;
     std::vector<std::string> menu_items = {
         "成绩录入",
-        "编辑删除",
         "成绩查询",
+        "成绩编辑",
+        "数据看板",
         "导出数据",
         "退出系统"
     };
@@ -269,11 +270,11 @@ Component App::menu_grade_add()
         {
             sql_db->get_course_student(result_course[lesson_select].class_id, result_student); //
             student_id_select = 0;
-            if (!dropdown2_text.empty())//这样处理的原因是因为ftxui库为异步渲染,直接清空会导致访问越界,因此保留第一个"请选择"提示语
+            if (!dropdown2_text.empty()) // 这样处理的原因是因为ftxui库为异步渲染,直接清空会导致访问越界,因此保留第一个"请选择"提示语
             {
                 dropdown2_text.erase(dropdown2_text.begin() + 1, dropdown2_text.end());
             }
-            for (int i = 1; i < result_student.size(); i++)//第一个为"请选择"提示语,直接跳过
+            for (int i = 1; i < result_student.size(); i++) // 第一个为"请选择"提示语,直接跳过
             {
                 dropdown2_text.push_back(result_student[i].student_id + "-" + result_student[i].student_name);
             }
@@ -331,11 +332,24 @@ Component App::menu_grade_add()
                      },
     });
 
+    // clang-format off
+    // 这里关闭了格式化,因为格式化会破坏代码的美观
     // 平时分输入
-
-    static auto input1 = Input(&input1_value, "请输入平时分", {.multiline = false}) | size(WIDTH, EQUAL, 20);
+    InputOption input_option;
+    input_option.multiline=false;
+    input_option.on_change = [&]() {
+        input1_value.erase(
+            std::remove_if(
+                input1_value.begin(),input1_value.end(),
+                [](char c) {return !std::isdigit(c) && c != '.';}
+            ),
+            input1_value.end()
+        );
+    };// 只允许输入数字和小数点
+    static auto input1 = Input(&input1_value, "请输入平时分", input_option) | size(WIDTH, EQUAL, 20);
     // 期末分输入
-    static auto input2 = Input(&input2_value, "请输入期末分", {.multiline = false}) | size(WIDTH, EQUAL, 20);
+    static auto input2 = Input(&input2_value, "请输入期末分", input_option) | size(WIDTH, EQUAL, 20);
+    // clang-format on
 
     static auto button1 = Button("重新输入", [&]() {
         input1_value = "";
