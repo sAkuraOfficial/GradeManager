@@ -11,7 +11,7 @@ App::~App()
 void App::login()
 {
     auto screen = ScreenInteractive::Fullscreen();
-
+    screen.SetCursor(ftxui::Screen::Cursor(0, 0, ftxui::Screen::Cursor::Hidden));
     std::string user_id, user_pwd;
     std::string message = "请登录......";
     bool reg_result = false;
@@ -45,8 +45,11 @@ void App::login()
 
     // test button login
     auto btn4 = Button(
-        "一键登录", [&] {
-        main_menu();
+        "测试登录", [&] {
+        if (account.user_login("1111", "123456"))
+        {
+            main_menu();
+        }
     }
     );
 
@@ -94,6 +97,7 @@ void App::login()
 void App::reg(bool &reg_result)
 {
     auto screen = ScreenInteractive::Fullscreen();
+    screen.SetCursor(ftxui::Screen::Cursor(0, 0, ftxui::Screen::Cursor::Hidden));
 
     bool user_type = false;
 
@@ -185,14 +189,13 @@ void App::main_menu()
 {
     // auto screen = ScreenInteractive::TerminalOutput();
     auto screen = ScreenInteractive::Fullscreen();
+    screen.SetCursor(ftxui::Screen::Cursor(0, 0, ftxui::Screen::Cursor::Hidden)); // 隐藏终端的光标
 
     int menu_items_selected = 0;
     std::vector<std::string> menu_items = {
         "成绩录入",
-        "成绩编辑",
-        "班级管理",
-        "课程管理",
-        "数据看板",
+        "编辑删除",
+        "成绩查询",
         "导出数据",
         "退出系统"
     };
@@ -209,9 +212,16 @@ void App::main_menu()
     auto childs = Container::Vertical({main_menu, main_menu_tab});
 
     auto component = Renderer(childs, [&] {
+        std::string user_name = "";
+        account.get_user_name(user_name);
         auto father_box = vbox(
             {
-                text("成绩管理系统") | center | color(Color::Yellow),
+                hbox({
+                    text("成绩管理系统"),
+                    text("     "),
+                    text("当前登录账户:"),
+                    text(user_name) | color(Color::Yellow),
+                }) | center,
                 separator(),
                 vbox({main_menu->Render()}) | center,
                 filler(),
@@ -219,7 +229,6 @@ void App::main_menu()
                 filler(),
             }
         );
-
         return father_box | border;
     });
     screen.Loop(component);
@@ -229,16 +238,60 @@ Component App::menu_grade_add()
 {
     // 备注:因为为了代码美观,menu_grade_add是包含在main_menu中的,不是单独的screen,
     // 因此,当前函数变量的生命周期不能短过main_menu的生命周期,所以我给变量加了static
+    static int lesson_select = 0;                    // 课程下拉框索引,id从1开始,0代表未选择
+    static int student_id_select = 0;                // 学生下拉框索引,id从1开始,0代表未选择
+    static std::string input1_value;                 // 存储平时分
+    static std::string input2_value;                 // 存储期末分
+    static std::vector<lesson> result_course;        // 在下面初始化
+    static std::vector<student_> result_student;     // 在下面初始化
+    static std::vector<std::string> dropdown1_text;  // course
+    static std::vector<std::string> dropdown2_text;  // lesson
+    static std::string user_id = "";                 // 用于存储教师id
+    static student_ student_selected = {};           // 用于存储选中了的学生信息
+    static std::string result_message = "请输入..."; // 通知
 
-    static std::vector<std::string> dropdown1_text;
-    sql_db->get_all_courses(dropdown1_text); // 获取所有科目
+    account.get_user_id(user_id);
+    sql_db->get_user_courses(user_id, result_course);
 
+    for (auto &i : result_course)
+    {
+        dropdown1_text.push_back(i.lesson_name);
+    }
+    dropdown2_text.push_back("请选择...");
+
+    // 选择科目:
     static auto dropdown_1 = Dropdown({
-        .radiobox = {.entries = &dropdown1_text},
-        .transform =
-            [](bool open, Element checkbox, Element radiobox) {
+        .radiobox = {
+                     .entries = &dropdown1_text,
+                     .selected = &lesson_select,
+                     .on_change = [&]() {
+        if (lesson_select != 0)
+        {
+            sql_db->get_course_student(result_course[lesson_select].class_id, result_student); //
+            student_id_select = 0;
+            if (!dropdown2_text.empty())//这样处理的原因是因为ftxui库为异步渲染,直接清空会导致访问越界,因此保留第一个"请选择"提示语
+            {
+                dropdown2_text.erase(dropdown2_text.begin() + 1, dropdown2_text.end());
+            }
+            for (int i = 1; i < result_student.size(); i++)//第一个为"请选择"提示语,直接跳过
+            {
+                dropdown2_text.push_back(result_student[i].student_id + "-" + result_student[i].student_name);
+            }
+        }
+        else
+        {
+            student_id_select = 0;
+            if (!dropdown2_text.empty())
+            {
+                dropdown2_text.erase(dropdown2_text.begin() + 1, dropdown2_text.end());
+            }
+        }
+    }
+        },
+        .transform = [](bool open, Element checkbox, Element radiobox) {
         if (open)
         {
+
             return vbox({
                 checkbox | inverted,
                 radiobox | vscroll_indicator | frame |
@@ -250,24 +303,84 @@ Component App::menu_grade_add()
             checkbox,
             filler(),
         });
-    },
+                     },
+    });
+
+    // 二级联动,据选择的科目,获取学生列表
+    static auto dropdown_2 = Dropdown({
+        .radiobox = {
+                     .entries = &dropdown2_text,
+                     .selected = &student_id_select,
+                     //.on_change = [&]() {}
+        },
+        .transform = [](bool open, Element checkbox, Element radiobox) {
+        if (open)
+        {
+
+            return vbox({
+                checkbox | inverted,
+                radiobox | vscroll_indicator | frame |
+                    size(HEIGHT, LESS_THAN, 5),
+                filler(),
+            });
+        }
+        return vbox({
+            checkbox,
+            filler(),
+        });
+                     },
     });
 
     // 平时分输入
-    static std::string input1_value; // 平时分
+
     static auto input1 = Input(&input1_value, "请输入平时分", {.multiline = false}) | size(WIDTH, EQUAL, 20);
     // 期末分输入
-    static std::string input2_value; // 期末分
     static auto input2 = Input(&input2_value, "请输入期末分", {.multiline = false}) | size(WIDTH, EQUAL, 20);
 
     static auto button1 = Button("重新输入", [&]() {
         input1_value = "";
         input2_value = "";
     });
-    static auto button2 = Button("确认输入", [&]() {});
+    static auto button2 = Button("确认输入", [&]() {
+        if (lesson_select != 0 && student_id_select != 0)
+        {
+
+            // 通过比例计算总分:
+            float grade_daily_percent = result_course[lesson_select].grade_daily_percent;
+            float grade_daily = std::stof(input1_value);
+            float grade_final = std::stof(input2_value);
+            float grade_total = grade_daily * grade_daily_percent + grade_final * (1 - grade_daily_percent);
+
+            // 插入/覆盖记录到数据库
+            std::string student_id_ = result_student[student_id_select].student_id;
+            std::string course_id = result_course[lesson_select].course_id;
+            sql_db->set_student_grade(student_id_, course_id, grade_daily, grade_final, grade_total);
+
+            // 清空输入框
+            input1_value = "";
+            input2_value = "";
+
+            // 切换到下一个学生
+            if (student_id_select + 1 < result_student.size())
+            {
+                result_message = "输入成功!已智能为您切换到下一个学生!";
+                student_id_select++;
+            }
+            else
+            {
+                result_message = "输入成功!已经是最后一个学生!";
+            }
+        }
+        else
+        {
+            result_message = "您还没有选择科目或学号,请重新选择";
+            return;
+        }
+    });
 
     auto childs = Container::Vertical({
         dropdown_1,
+        dropdown_2,
         input1,
         input2,
         button1,
@@ -280,20 +393,14 @@ Component App::menu_grade_add()
                 text("信息输入") | center,
                 separator(),
                 hbox({text("📚 请选择科目: "), dropdown_1->Render()}),
-                separator(),
-                vbox(
-                    {
-                        hbox({text("🏫 请选择学院:")}),
-                        hbox({text("🤓 请选择班级:")}),
-                        hbox({text("🆔 请选择学号:")}),
-                    }
-                ),
+                hbox({text("🆔 请选择学号: "), dropdown_2->Render()}),
                 separator(),
                 hbox({text("💯 输入平时分: "), input1->Render()}),
                 hbox({text("📝 输入期末分: "), input2->Render()}),
                 text("系统将按照学科预设的比例计算总分") | center,
+                text(result_message),
                 separator(),
-                hbox({text("😍 总分: "), text("100.0") | color(Color::Blue)}) | center,
+                hbox({text("😍 总分: "), text(std::to_string(lesson_select)) | color(Color::Blue)}) | center,
                 hbox({button1->Render(), button2->Render()}) | center,
             }
         );

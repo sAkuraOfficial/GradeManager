@@ -15,4 +15,8 @@ class Account
     ~Account();
     bool user_login(std::string id, std::string pwd);
     bool user_register(std::string id, std::string pwd, std::string name);
+    bool get_user_courses(std::vector<lesson> &courses);
+    bool get_user_id(std::string& id);
+    bool get_user_name(std::string& name);
+    bool get_logined();
 };
