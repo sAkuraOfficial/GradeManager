@@ -216,6 +216,7 @@ void App::main_menu()
     auto main_menu_tab = Container::Tab(
         {
             menu_grade_add(),
+            menu_grade_search(),
         },
         &menu_items_selected
     );
@@ -261,9 +262,13 @@ Component App::menu_grade_add()
     static student_ student_selected = {};           // 用于存储选中了的学生信息
     static std::string result_message = "请输入..."; // 通知
     static float show_grade_total = 0.0f;            // 用于在标题中显示总分
+    static bool self_course_checked = true;          // 默认只显示自己的科目
 
     account.get_user_id(user_id);
-    sql_db->get_user_courses(user_id, result_course);
+    if (self_course_checked)
+        sql_db->get_teacher_lesson(user_id, result_course);
+    else
+        sql_db->get_teacher_lesson("%", result_course);
 
     for (auto &i : result_course)
     {
@@ -279,24 +284,20 @@ Component App::menu_grade_add()
                      .on_change = [&]() {
         if (lesson_select != 0)
         {
-            sql_db->get_course_student(result_course[lesson_select].class_id, result_student); //
+            sql_db->get_course_student(result_course[lesson_select].class_id, result_student);
+
             student_id_select = 0;
-            if (!dropdown2_text.empty()) // 这样处理的原因是因为ftxui库为异步渲染,直接清空会导致访问越界,因此保留第一个"请选择"提示语
+            dropdown2_text.clear();
+            for (auto &i : result_student)
             {
-                dropdown2_text.erase(dropdown2_text.begin() + 1, dropdown2_text.end());
-            }
-            for (int i = 1; i < result_student.size(); i++) // 第一个为"请选择"提示语,直接跳过
-            {
-                dropdown2_text.push_back(result_student[i].student_id + "-" + result_student[i].student_name);
+                dropdown2_text.push_back(i.student_id + "-" + i.student_name);
             }
         }
         else
         {
             student_id_select = 0;
-            if (!dropdown2_text.empty())
-            {
-                dropdown2_text.erase(dropdown2_text.begin() + 1, dropdown2_text.end());
-            }
+            dropdown2_text.clear();
+            dropdown2_text.push_back("请选择...");
         }
     }
         },
@@ -342,6 +343,49 @@ Component App::menu_grade_add()
         });
                      },
     });
+
+    CheckboxOption checkbox1_option;
+    checkbox1_option.on_change = [&]() {
+        lesson_select = 0;
+        student_id_select = 0;
+
+        // 重新获取课程列表
+        result_course.clear();
+        dropdown1_text.clear();
+        if (self_course_checked)
+            sql_db->get_teacher_lesson(user_id, result_course);
+        else
+            sql_db->get_teacher_lesson("%", result_course);
+        for (auto &i : result_course)
+        {
+            dropdown1_text.push_back(i.lesson_name);
+        }
+
+        // 重置学生列表
+        result_student.clear();
+        dropdown2_text.clear();
+        dropdown2_text.push_back("请选择...");
+
+        input1_value = "";
+        input2_value = "";
+        show_grade_total = 0.0f;
+        result_message = "请输入...";
+    };
+    checkbox1_option.transform = [&](const EntryState &s) {
+        auto prefix = text(s.state ? "✅ " : "❎ "); // NOLINT
+        auto t = text(s.label);
+        if (s.active)
+        {
+            t |= bold;
+        }
+        if (s.focused)
+        {
+            t |= inverted;
+        }
+        return hbox({prefix, t});
+    };
+
+    static auto checkbox1 = Checkbox("仅显示自身授课", &self_course_checked, checkbox1_option);
 
     // clang-format off
     // 这里关闭了格式化,因为格式化会破坏代码的美观
@@ -392,7 +436,7 @@ Component App::menu_grade_add()
             // 插入/覆盖记录到数据库
             std::string student_id_ = result_student[student_id_select].student_id;
             std::string course_id = result_course[lesson_select].course_id;
-            sql_db->set_student_grade(student_id_, course_id, grade_daily, grade_final, grade_total);
+            sql_db->set_student_course_grade(student_id_, course_id, grade_daily, grade_final, grade_total);
 
             // 清空输入框
             input1_value = "";
@@ -417,12 +461,13 @@ Component App::menu_grade_add()
     });
 
     auto childs = Container::Vertical({
-        dropdown_1,
-        dropdown_2,
-        input1,
-        input2,
-        button1,
-        button2,
+        dropdown_1, // 科目列表
+        dropdown_2, // 学生列表
+        input1,     // 平时分
+        input2,     // 期末分
+        checkbox1,  // 选择框:仅自己科目
+        button1,    // 重新输入
+        button2,    // 确认输入
     });
 
     auto renderer = Renderer(childs, [&] {
@@ -436,7 +481,7 @@ Component App::menu_grade_add()
                 hbox({text("💯 输入平时分: "), input1->Render()}),
                 hbox({text("📝 输入期末分: "), input2->Render()}),
                 text("系统将按照学科预设的比例计算总分") | center,
-                text(result_message),
+                hbox({text(result_message), filler(), checkbox1->Render()}),
                 separator(),
                 hbox({text("😍 总分: "), text(std::to_string(show_grade_total)) | color(Color::Blue)}) | center,
                 hbox({button1->Render(), button2->Render()}) | center,
@@ -449,5 +494,76 @@ Component App::menu_grade_add()
         return father_box;
     });
 
+    return renderer;
+}
+
+Component App::menu_grade_search()
+{
+    static int lesson_select = 0;                    // 课程下拉框索引,id从1开始,0代表未选择
+    static std::vector<lesson> result_course;        // 在下面初始化
+    static std::vector<student_> result_student;     // 在下面初始化
+    static std::vector<std::string> dropdown1_text;  // course
+    static std::string user_id = "";                 // 用于存储教师id
+    static std::string result_message = "请输入..."; // 通知
+    static float show_grade_total = 0.0f;            // 用于在标题中显示总分
+
+    account.get_user_id(user_id);
+    sql_db->get_teacher_lesson(user_id, result_course);
+
+    for (auto &i : result_course)
+    {
+        dropdown1_text.push_back(i.lesson_name);
+    }
+
+    static auto dropdown_1 = Dropdown({
+        .radiobox = {
+                     .entries = &dropdown1_text,
+                     .selected = &lesson_select,
+                     .on_change = [&]() {
+        if (lesson_select != 0)
+        {
+            sql_db->get_course_student(result_course[lesson_select].class_id, result_student); //
+        }
+        else
+        {
+        }
+    }
+        },
+        .transform = [](bool open, Element checkbox, Element radiobox) {
+        if (open)
+        {
+
+            return vbox({
+                checkbox | inverted,
+                radiobox | vscroll_indicator | frame |
+                    size(HEIGHT, LESS_THAN, 5),
+                filler(),
+            });
+        }
+        return vbox({
+            checkbox,
+            filler(),
+        });
+                     },
+    });
+
+    auto childs = Container::Vertical({
+        dropdown_1,
+    });
+
+    auto renderer = Renderer(childs, [&] {
+        auto father_box = vbox(
+            {
+                text("成绩查询") | center,
+                separator(),
+                hbox({text("📚 请选择科目: "), dropdown_1->Render()}),
+            }
+        );
+        father_box |= border;
+        father_box |= size(WIDTH, EQUAL, 60);
+        father_box |= center;
+
+        return father_box;
+    });
     return renderer;
 }

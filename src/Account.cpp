@@ -24,9 +24,9 @@ bool Account::user_register(std::string id, std::string pwd, std::string name)
     return sql_db->reg(user_id, user_pwd, user_name);
 }
 
-bool Account::get_user_courses(std::vector<lesson> &courses)
+bool Account::get_teacher_lesson(std::vector<lesson> &courses)
 {
-    return sql_db->get_user_courses(user_id, courses);
+    return sql_db->get_teacher_lesson(user_id, courses);
 }
 
 bool Account::get_user_id(std::string &id)
