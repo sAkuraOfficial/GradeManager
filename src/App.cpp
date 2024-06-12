@@ -216,7 +216,7 @@ void App::main_menu()
     auto main_menu_tab = Container::Tab(
         {
             menu_grade_add(),
-            menu_grade_search(&screen),
+            menu_grade_search(),
         },
         &menu_items_selected
     );
@@ -501,7 +501,7 @@ Component App::menu_grade_add()
     return renderer;
 }
 
-Component App::menu_grade_search(Screen *screen)
+Component App::menu_grade_search()
 {
     // 静态标志变量
     static int dropdown1_select = 0;

@@ -23,7 +23,7 @@ class App
     void reg(bool &reg_result);
     void main_menu();
     Component menu_grade_add();
-    Component menu_grade_search(Screen* screen);
+    Component menu_grade_search();
 };
 
 enum sex
