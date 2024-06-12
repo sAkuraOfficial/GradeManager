@@ -216,7 +216,7 @@ void App::main_menu()
     auto main_menu_tab = Container::Tab(
         {
             menu_grade_add(),
-            menu_grade_search(),
+            menu_grade_search(&screen),
         },
         &menu_items_selected
     );
@@ -426,11 +426,15 @@ Component App::menu_grade_add()
     static auto button2 = Button("确认输入", [&]() {
         if (lesson_select != 0 && student_id_select != 0)
         {
-
+            if (input1_value == "" || input2_value == "")
+            {
+                result_message = "请输入完整的成绩信息!";
+                return;
+            }
             // 通过比例计算总分:
             float grade_daily_percent = result_course[lesson_select].grade_daily_percent;
-            float grade_daily = std::stof(input1_value);
-            float grade_final = std::stof(input2_value);
+            float grade_daily = input1_value == "" ? 0.0f : std::stof(input1_value);
+            float grade_final = input2_value == "" ? 0.0f : std::stof(input2_value);
             float grade_total = grade_daily * grade_daily_percent + grade_final * (1 - grade_daily_percent);
 
             // 插入/覆盖记录到数据库
@@ -497,73 +501,126 @@ Component App::menu_grade_add()
     return renderer;
 }
 
-Component App::menu_grade_search()
+Component App::menu_grade_search(Screen *screen)
 {
-    static int lesson_select = 0;                    // 课程下拉框索引,id从1开始,0代表未选择
-    static std::vector<lesson> result_course;        // 在下面初始化
-    static std::vector<student_> result_student;     // 在下面初始化
-    static std::vector<std::string> dropdown1_text;  // course
-    static std::string user_id = "";                 // 用于存储教师id
-    static std::string result_message = "请输入..."; // 通知
-    static float show_grade_total = 0.0f;            // 用于在标题中显示总分
+    // 静态标志变量
+    static int dropdown1_select = 0;
 
-    account.get_user_id(user_id);
-    sql_db->get_teacher_lesson(user_id, result_course);
+    // 获取当前教师id
+    static std::string teacher_id = "";
+    account.get_user_id(teacher_id);
 
+    // 获取默认课程
+    static std::vector<lesson> result_course;
+    sql_db->get_teacher_lesson(teacher_id, result_course);
+
+    // 课程的所有学生
+    static std::vector<student_> result_student;
+
+    // 课程的所有学生的成绩
+    static std::vector<grade> result_grade;
+
+    // 设置下拉框标题:所有课程
+    static std::vector<std::string> dropdown1_text;
     for (auto &i : result_course)
     {
         dropdown1_text.push_back(i.lesson_name);
     }
 
-    static auto dropdown_1 = Dropdown({
-        .radiobox = {
-                     .entries = &dropdown1_text,
-                     .selected = &lesson_select,
-                     .on_change = [&]() {
-        if (lesson_select != 0)
+    // 下拉框
+    static DropdownOption dropdown1_option;
+    dropdown1_option.radiobox.entries = &dropdown1_text;
+    dropdown1_option.radiobox.selected = &dropdown1_select;
+    dropdown1_option.radiobox.on_change = [&]() {
+        if (dropdown1_select != 0)
         {
-            sql_db->get_course_student(result_course[lesson_select].class_id, result_student); //
+            sql_db->get_course_student(result_course[dropdown1_select].class_id, result_student);
+            result_student.erase(result_student.begin());
+            result_grade.clear();
+            for (auto &i : result_student)
+            {
+                grade temp;
+                sql_db->get_student_course_grade(i.student_id, result_course[dropdown1_select].course_id, temp);
+                result_grade.push_back(temp);
+            }
         }
-        else
-        {
-        }
-    }
-        },
-        .transform = [](bool open, Element checkbox, Element radiobox) {
-        if (open)
-        {
+    };
 
+    dropdown1_option.transform = [](bool open, Element checkbox, Element radiobox) {
+        if (open)
             return vbox({
                 checkbox | inverted,
                 radiobox | vscroll_indicator | frame |
                     size(HEIGHT, LESS_THAN, 5),
                 filler(),
             });
-        }
-        return vbox({
-            checkbox,
-            filler(),
-        });
-                     },
-    });
+        return vbox({checkbox, filler()});
+    };
 
-    auto childs = Container::Vertical({
-        dropdown_1,
-    });
+    static auto dropdown1 = Dropdown(dropdown1_option);
 
-    auto renderer = Renderer(childs, [&] {
-        auto father_box = vbox(
+    static auto childs = Container::Vertical({dropdown1});
+
+    static auto renderer = Renderer(childs, [&]() {
+        Elements childrens = {
+            dropdown1->Render(),
+            separator(),
+        };
+
+        //创建表头数据
+        Elements table_head = {
+            text("班级"),
+            separator(),
+            text("学号姓名"),
+            separator(),
+            text("平时分"),
+            separator(),
+            text("期末分"),
+            separator(),
+            text("总分"),
+        };
+
+        std::vector<Elements> elements_arr;
+        elements_arr.push_back(table_head);
+
+        // 创建表格的数据
+        for (auto &i : result_student)
+        {
+            if (i.student_id == "" || i.student_name == "")
+                continue;
+            grade temp_grade;
+            if (!sql_db->get_student_course_grade(i.student_id, result_course[dropdown1_select].course_id, temp_grade))
             {
-                text("成绩查询") | center,
-                separator(),
-                hbox({text("📚 请选择科目: "), dropdown_1->Render()}),
+                continue; // 读取失败
             }
-        );
-        father_box |= border;
-        father_box |= size(WIDTH, EQUAL, 60);
-        father_box |= center;
+            Elements temp_elements = {
+                text(temp_grade.student_class),
+                separator(),
+                text(i.student_id + "-" + i.student_name),
+                separator(),
+                text(std::to_string(temp_grade.grade_daily)),
+                separator(),
+                text(std::to_string(temp_grade.grade_final)),
+                separator(),
+                text(std::to_string(temp_grade.grade_total)),
+            };
+            elements_arr.push_back(temp_elements);
+        }
 
-        return father_box;
+        // 创建table
+        auto table_ = Table(elements_arr);
+        table_.SelectAll().Border(LIGHT);
+        table_.SelectAll().SeparatorHorizontal(LIGHT);
+        auto r = table_.Render();
+        childrens.push_back(vbox({r}) | center);
+
+        auto box = vbox({childrens});
+        box |= border;
+        box |= size(WIDTH, EQUAL, ftxui::Terminal::Size().dimx);
+        box |= size(HEIGHT, EQUAL, ftxui::Terminal::Size().dimy);
+        box |= center;
+
+        return box;
     });
     return renderer;
 }

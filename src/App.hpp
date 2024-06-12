@@ -4,6 +4,7 @@
 #include "ftxui/component/component_base.hpp"
 #include "ftxui/component/screen_interactive.hpp"
 #include "ftxui/dom/elements.hpp"
+#include "ftxui/dom/table.hpp"
 #include <iostream>
 
 #include "Account.hpp"
@@ -22,7 +23,7 @@ class App
     void reg(bool &reg_result);
     void main_menu();
     Component menu_grade_add();
-    Component menu_grade_search();
+    Component menu_grade_search(Screen* screen);
 };
 
 enum sex
