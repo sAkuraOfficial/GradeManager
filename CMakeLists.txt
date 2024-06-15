@@ -27,7 +27,8 @@ add_subdirectory(external/libxlsxwriter)
 add_subdirectory(external/nativefiledialog-extended)
 
 file(GLOB SRC ./src/*.cpp) #遍历所有cpp文件
-file(GLOB INC ./src/*.hpp) #遍历所有cpp文件g
+file(GLOB INC ./src/*.hpp) #遍历所有hpp文件
+file(GLOB INC ./src/*.css) #遍历所有css文件
 
 
 add_executable(GradeManager ${SRC} ${INC})

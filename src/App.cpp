@@ -1,4 +1,5 @@
 #include "App.hpp"
+#include "css.hpp"
 App::App()
     : sql_db(new Sql_db()), account(sql_db)
 {
@@ -203,9 +204,8 @@ void App::main_menu()
 
     int menu_items_selected = 0;
     std::vector<std::string> menu_items = {
-        "成绩录入",
-        "成绩查询",
         "成绩编辑",
+        "成绩查询",
         "数据看板",
         "导出数据",
         "退出系统"
@@ -215,7 +215,7 @@ void App::main_menu()
 
     auto main_menu_tab = Container::Tab(
         {
-            menu_grade_add(),
+            menu_grade_edit(),
             menu_grade_search(),
         },
         &menu_items_selected
@@ -244,261 +244,6 @@ void App::main_menu()
         return father_box | border;
     });
     screen.Loop(component);
-}
-
-Component App::menu_grade_add()
-{
-    // 备注:因为为了代码美观,menu_grade_add是包含在main_menu中的,不是单独的screen,
-    // 因此,当前函数变量的生命周期不能短过main_menu的生命周期,所以我给变量加了static
-    static int lesson_select = 0;                    // 课程下拉框索引,id从1开始,0代表未选择
-    static int student_id_select = 0;                // 学生下拉框索引,id从1开始,0代表未选择
-    static std::string input1_value;                 // 存储平时分
-    static std::string input2_value;                 // 存储期末分
-    static std::vector<lesson> result_course;        // 在下面初始化
-    static std::vector<student_> result_student;     // 在下面初始化
-    static std::vector<std::string> dropdown1_text;  // course
-    static std::vector<std::string> dropdown2_text;  // lesson
-    static std::string user_id = "";                 // 用于存储教师id
-    static student_ student_selected = {};           // 用于存储选中了的学生信息
-    static std::string result_message = "请输入..."; // 通知
-    static float show_grade_total = 0.0f;            // 用于在标题中显示总分
-    static bool self_course_checked = true;          // 默认只显示自己的科目
-
-    account.get_user_id(user_id);
-    if (self_course_checked)
-        sql_db->get_teacher_lesson(user_id, result_course);
-    else
-        sql_db->get_teacher_lesson("%", result_course);
-
-    for (auto &i : result_course)
-    {
-        dropdown1_text.push_back(i.lesson_name);
-    }
-    dropdown2_text.push_back("请选择...");
-
-    // 选择科目:
-    static auto dropdown_1 = Dropdown({
-        .radiobox = {
-                     .entries = &dropdown1_text,
-                     .selected = &lesson_select,
-                     .on_change = [&]() {
-        if (lesson_select != 0)
-        {
-            sql_db->get_course_student(result_course[lesson_select].class_id, result_student);
-
-            student_id_select = 0;
-            dropdown2_text.clear();
-            for (auto &i : result_student)
-            {
-                dropdown2_text.push_back(i.student_id + "-" + i.student_name);
-            }
-        }
-        else
-        {
-            student_id_select = 0;
-            dropdown2_text.clear();
-            dropdown2_text.push_back("请选择...");
-        }
-    }
-        },
-        .transform = [](bool open, Element checkbox, Element radiobox) {
-        if (open)
-        {
-
-            return vbox({
-                checkbox | inverted,
-                radiobox | vscroll_indicator | frame |
-                    size(HEIGHT, LESS_THAN, 5),
-                filler(),
-            });
-        }
-        return vbox({
-            checkbox,
-            filler(),
-        });
-                     },
-    });
-
-    // 二级联动,据选择的科目,获取学生列表
-    static auto dropdown_2 = Dropdown({
-        .radiobox = {
-                     .entries = &dropdown2_text,
-                     .selected = &student_id_select,
-                     //.on_change = [&]() {}
-        },
-        .transform = [](bool open, Element checkbox, Element radiobox) {
-        if (open)
-        {
-
-            return vbox({
-                checkbox | inverted,
-                radiobox | vscroll_indicator | frame |
-                    size(HEIGHT, LESS_THAN, 5),
-                filler(),
-            });
-        }
-        return vbox({
-            checkbox,
-            filler(),
-        });
-                     },
-    });
-
-    CheckboxOption checkbox1_option;
-    checkbox1_option.on_change = [&]() {
-        lesson_select = 0;
-        student_id_select = 0;
-
-        // 重新获取课程列表
-        result_course.clear();
-        dropdown1_text.clear();
-        if (self_course_checked)
-            sql_db->get_teacher_lesson(user_id, result_course);
-        else
-            sql_db->get_teacher_lesson("%", result_course);
-        for (auto &i : result_course)
-        {
-            dropdown1_text.push_back(i.lesson_name);
-        }
-
-        // 重置学生列表
-        result_student.clear();
-        dropdown2_text.clear();
-        dropdown2_text.push_back("请选择...");
-
-        input1_value = "";
-        input2_value = "";
-        show_grade_total = 0.0f;
-        result_message = "请输入...";
-    };
-    checkbox1_option.transform = [&](const EntryState &s) {
-        auto prefix = text(s.state ? "✅ " : "❎ "); // NOLINT
-        auto t = text(s.label);
-        if (s.active)
-        {
-            t |= bold;
-        }
-        if (s.focused)
-        {
-            t |= inverted;
-        }
-        return hbox({prefix, t});
-    };
-
-    static auto checkbox1 = Checkbox("仅显示自身授课", &self_course_checked, checkbox1_option);
-
-    // clang-format off
-    // 这里关闭了格式化,因为格式化会破坏代码的美观
-    // 平时分输入
-    InputOption input_option;
-    input_option.multiline=false;
-    input_option.on_change = [&]() {
-        // 只允许输入数字和小数点
-        input1_value.erase(
-            std::remove_if(
-                input1_value.begin(),input1_value.end(),
-                [](char c) {return !std::isdigit(c) && c != '.';}
-            ),
-            input1_value.end()
-        );
-         input2_value.erase(
-            std::remove_if(
-                input2_value.begin(),input2_value.end(),
-                [](char c) {return !std::isdigit(c) && c != '.';}
-            ),
-            input2_value.end()
-        );
-        //每次输入后,自动计算总分
-        float grade_daily_percent = result_course[lesson_select].grade_daily_percent;
-        float grade_daily = input1_value== "" ? 0.0f: std::stof(input1_value);//防止出错
-        float grade_final = input2_value== "" ? 0.0f: std::stof(input2_value);
-        show_grade_total = grade_daily * grade_daily_percent + grade_final * (1 - grade_daily_percent);
-    };
-    static auto input1 = Input(&input1_value, "请输入平时分", input_option) | size(WIDTH, EQUAL, 20);
-    // 期末分输入
-    static auto input2 = Input(&input2_value, "请输入期末分", input_option) | size(WIDTH, EQUAL, 20);
-    // clang-format on
-
-    static auto button1 = Button("重新输入", [&]() {
-        input1_value = "";
-        input2_value = "";
-    });
-    static auto button2 = Button("确认输入", [&]() {
-        if (lesson_select != 0 && student_id_select != 0)
-        {
-            if (input1_value == "" || input2_value == "")
-            {
-                result_message = "请输入完整的成绩信息!";
-                return;
-            }
-            // 通过比例计算总分:
-            float grade_daily_percent = result_course[lesson_select].grade_daily_percent;
-            float grade_daily = input1_value == "" ? 0.0f : std::stof(input1_value);
-            float grade_final = input2_value == "" ? 0.0f : std::stof(input2_value);
-            float grade_total = grade_daily * grade_daily_percent + grade_final * (1 - grade_daily_percent);
-
-            // 插入/覆盖记录到数据库
-            std::string student_id_ = result_student[student_id_select].student_id;
-            std::string course_id = result_course[lesson_select].course_id;
-            sql_db->set_student_course_grade(student_id_, course_id, grade_daily, grade_final, grade_total);
-
-            // 清空输入框
-            input1_value = "";
-            input2_value = "";
-
-            // 切换到下一个学生
-            if (student_id_select + 1 < result_student.size())
-            {
-                result_message = "输入成功!已智能为您切换到下一个学生!";
-                student_id_select++;
-            }
-            else
-            {
-                result_message = "输入成功!已经是最后一个学生!";
-            }
-        }
-        else
-        {
-            result_message = "您还没有选择科目或学号,请重新选择";
-            return;
-        }
-    });
-
-    auto childs = Container::Vertical({
-        dropdown_1, // 科目列表
-        dropdown_2, // 学生列表
-        input1,     // 平时分
-        input2,     // 期末分
-        checkbox1,  // 选择框:仅自己科目
-        button1,    // 重新输入
-        button2,    // 确认输入
-    });
-
-    auto renderer = Renderer(childs, [&] {
-        auto father_box = vbox(
-            {
-                text("信息输入") | center,
-                separator(),
-                hbox({text("📚 请选择科目: "), dropdown_1->Render()}),
-                hbox({text("🆔 请选择学号: "), dropdown_2->Render()}),
-                separator(),
-                hbox({text("💯 输入平时分: "), input1->Render()}),
-                hbox({text("📝 输入期末分: "), input2->Render()}),
-                text("系统将按照学科预设的比例计算总分") | center,
-                hbox({text(result_message), filler(), checkbox1->Render()}),
-                separator(),
-                hbox({text("😍 总分: "), text(std::to_string(show_grade_total)) | color(Color::Blue)}) | center,
-                hbox({button1->Render(), button2->Render()}) | center,
-            }
-        );
-        father_box |= border;
-        father_box |= size(WIDTH, EQUAL, 60);
-        father_box |= center;
-
-        return father_box;
-    });
-
-    return renderer;
 }
 
 Component App::menu_grade_search()
@@ -567,7 +312,7 @@ Component App::menu_grade_search()
             separator(),
         };
 
-        //创建表头数据
+        // 创建表头数据
         Elements table_head = {
             text("班级"),
             separator(),
@@ -623,4 +368,248 @@ Component App::menu_grade_search()
         return box;
     });
     return renderer;
+}
+
+Component App::menu_grade_edit()
+{
+    // 存储提示消息
+    static message system_message = get_message_menu_grade_edit(message_menu_grade_edit::WAIT_INPUT);
+
+    // 存储是否仅自身lesson
+    static bool only_self_lesson = true;
+
+    // 存储教师id
+    static std::string user_id = ""; // 教师id
+    account.get_user_id(user_id);
+
+    // 存储平时分期末分的静态变量
+    static float grade_daily = 0.0f;
+    static float grade_final = 0.0f;
+    static float grade_total = 0.0f;
+    static std::string input1_value; // 平时分
+    static std::string input2_value; // 期末分
+    static std::string grade_total_text;
+
+    // 学生下拉框
+    static int student_select = 0;                                      // 下拉框索引
+    static std::vector<student_> result_student;                        // 查询student结果
+    static std::vector<std::string> dropdown2_text = {"未选择授课..."}; // 下拉框显示文本
+    static auto dropdown2_option = dropdown_option_beautiful(&dropdown2_text, &student_select);
+    static auto dropdown2 = Dropdown(dropdown2_option);
+
+    // 科目下拉框
+    static int lesson_select = 0;                   // 下拉框索引
+    static std::vector<lesson> result_lesson;       // 查询lesson结果
+    static std::vector<std::string> dropdown1_text; // 下拉框显示文本
+    static auto dropdown1_option = dropdown_option_beautiful(&dropdown1_text, &lesson_select);
+    dropdown1_option.radiobox.on_change = [&]() {
+        student_select = 0;
+        dropdown2_text.clear(); // 重置学生下拉框
+        if (lesson_select)      // 选中非0,0是提示语
+        {
+            if (sql_db->get_course_student(result_lesson[lesson_select].class_id, result_student))
+            {
+                for (auto &i : result_student)
+                    dropdown2_text.push_back(i.student_id + "-" + i.student_name);
+            }
+        }
+        else
+            dropdown2_text.push_back("未选择授课..."); // 重置学生下拉框
+    };
+    static auto dropdown1 = Dropdown(dropdown1_option);
+
+    // 初始化科目,初始化下拉框文本
+    if (only_self_lesson)
+        sql_db->get_teacher_lesson(user_id, result_lesson);
+    else
+        sql_db->get_teacher_lesson("%", result_lesson);
+    for (auto &i : result_lesson)
+        dropdown1_text.push_back(i.lesson_name);
+
+    // 自定义输入框设计
+    static auto input_option = InputOption();
+    input_option.multiline = false;
+    input_option.on_change = [&]() {
+        // 定义一个检测函数,检测输入是否为数字或小数点
+        auto only_number = [](char c) {
+            return !std::isdigit(c) && c != '.';
+        };
+        // 只允许输入数字和小数点
+        input1_value.erase(std::remove_if(input1_value.begin(), input1_value.end(), only_number), input1_value.end());
+        input2_value.erase(std::remove_if(input2_value.begin(), input2_value.end(), only_number), input2_value.end());
+        // 每次输入后,自动计算总分
+        float grade_daily_percent = result_lesson[lesson_select].grade_daily_percent;
+        grade_daily = input1_value == "" ? 0.0f : std::stof(input1_value); // 防止出错,stof遇到空字符串会抛出异常
+        grade_final = input2_value == "" ? 0.0f : std::stof(input2_value);
+        grade_total = grade_daily * grade_daily_percent + grade_final * (1 - grade_daily_percent);
+        grade_total_text = std::to_string(grade_total);
+    };
+
+    // 输入框_平时分和期末分
+    static auto input1 = Input(&input1_value, "平时分...", input_option) | size(WIDTH, EQUAL, 20);
+    static auto input2 = Input(&input2_value, "期末分...", input_option) | size(WIDTH, EQUAL, 20);
+
+    // 选择框_是否仅自身授课
+    static auto checkbox_option = checkbox_option_beautiful();
+    checkbox_option.on_change = [&]() {
+        lesson_select = student_select = 0;
+        input1_value = input2_value = grade_total_text = "";
+        system_message = get_message_menu_grade_edit(message_menu_grade_edit::WAIT_INPUT);
+        dropdown1_text.clear();             // 重置科目下拉框
+        dropdown2_text = {"未选择授课..."}; // 重置学生下拉框
+        if (only_self_lesson)
+            sql_db->get_teacher_lesson(user_id, result_lesson);
+        else
+            sql_db->get_teacher_lesson("%", result_lesson);
+        for (auto &i : result_lesson)
+            dropdown1_text.push_back(i.lesson_name);
+    };
+    static auto checkbox1 = Checkbox("仅显示自身授课", &only_self_lesson, checkbox_option);
+
+    // 按钮_读取成绩,删除成绩,输入成绩
+    static auto button1 = Button("读取成绩", [&]() {
+        if (lesson_select == 0 || student_select == 0)
+        {
+            system_message = get_message_menu_grade_edit(message_menu_grade_edit::READ_FAILED);
+            return;
+        }
+        grade temp_grade;
+        bool read_ok = sql_db->get_student_course_grade(result_student[student_select].student_id, result_lesson[lesson_select].course_id, temp_grade);
+        input1_value = read_ok ? std::to_string(temp_grade.grade_daily) : "";
+        input2_value = read_ok ? std::to_string(temp_grade.grade_final) : "";
+        grade_total = read_ok ? temp_grade.grade_total : 0.0f;
+        grade_total_text = read_ok ? std::to_string(grade_total) : "";
+        system_message = read_ok ? get_message_menu_grade_edit(message_menu_grade_edit::READ_SUCCESSED) : get_message_menu_grade_edit(message_menu_grade_edit::READ_FAILED);
+    });
+
+    static auto button2 = Button("删除成绩", [&]() {
+        if (lesson_select == 0 || student_select == 0)
+        {
+            system_message = get_message_menu_grade_edit(message_menu_grade_edit::DELETE_FAILED);
+            return;
+        }
+        if (sql_db->set_student_course_grade(result_student[student_select].student_id, result_lesson[lesson_select].course_id, 0.0f, 0.0f, 0.0f))
+        {
+            grade_daily = grade_final = grade_total = 0.0f; // 清空数据
+            input1_value = input2_value = grade_total_text = "";
+            system_message = get_message_menu_grade_edit(message_menu_grade_edit::DELETE_SUCCESSED);
+        }
+        else
+            system_message = get_message_menu_grade_edit(message_menu_grade_edit::DELETE_FAILED); // 删除失败,则输入框保持原有数据
+    });
+
+    static auto button3 = Button("确认输入", [&]() {
+        if (lesson_select == 0 || student_select == 0 || input1_value == "" || input2_value == "")
+        {
+            system_message = get_message_menu_grade_edit(message_menu_grade_edit::INPUT_ERROR);
+            return;
+        }
+        bool write_ok = sql_db->set_student_course_grade(result_student[student_select].student_id, result_lesson[lesson_select].course_id, grade_daily, grade_final, grade_total);
+        if (write_ok)
+        {
+            // 输入成功,自动切换到下一个学生
+            if (student_select + 1 < result_student.size())
+            {
+                student_select++;
+                grade temp_grade;
+                bool read_ok = sql_db->get_student_course_grade(result_student[student_select].student_id, result_lesson[lesson_select].course_id, temp_grade);
+                input1_value = read_ok ? std::to_string(temp_grade.grade_daily) : "";
+                input2_value = read_ok ? std::to_string(temp_grade.grade_final) : "";
+                grade_total = read_ok ? temp_grade.grade_total : 0.0f;
+                grade_total_text = read_ok ? std::to_string(grade_total) : "";
+                system_message = get_message_menu_grade_edit(message_menu_grade_edit::WRITE_SUCCESSED_SWITCH_NEXT);
+            }
+            else
+                system_message = get_message_menu_grade_edit(message_menu_grade_edit::WRITE_SUCCESSED_LAST);
+        }
+        else
+        {
+            // 输入失败,保持原有数据
+            system_message = get_message_menu_grade_edit(message_menu_grade_edit::WRITE_FAILED);
+        }
+    });
+
+    // 子元素容器,用于提供给renderer接管输入事件
+    static auto childs = Container::Vertical({dropdown1, dropdown2, input1, input2, checkbox1, button1, button2, button3});
+
+    static auto renderer = Renderer(childs, [&]() {
+        auto father_box = vbox({
+            text("信息输入") | center,
+            separator(),
+            hbox({text("📚 请选择科目: "), dropdown1->Render()}),
+            hbox({text("🆔 请选择学号: "), dropdown2->Render()}),
+            separator(),
+            hbox({text("💯 输入平时分: "), input1->Render()}),
+            hbox({text("📝 输入期末分: "), input2->Render()}),
+            text("系统将按照学科预设的比例计算总分") | center,
+            hbox({text(system_message.msg) | color(system_message.color), filler(), checkbox1->Render()}),
+            separator(),
+            hbox({text("😍 总分: "), text(grade_total_text) | color(Color::Blue)}) | center,
+            hbox({button1->Render(), button2->Render(), button3->Render()}) | center,
+        });
+        father_box |= border;
+        father_box |= size(WIDTH, EQUAL, 60);
+        father_box |= center;
+        return father_box;
+    });
+
+    return renderer;
+}
+
+message App::get_message_menu_grade_edit(message_menu_grade_edit message_id)
+{
+    message result_message;
+    result_message.message_id = message_id;
+    if (message_id == message_menu_grade_edit::NONE)
+    {
+        result_message.msg = "当前消息未定义!";
+        result_message.color = ftxui::Color::RedLight;
+    }
+    else if (message_id == message_menu_grade_edit::INPUT_ERROR)
+    {
+        result_message.msg = "信息输入不完整,请检查!";
+        result_message.color = ftxui::Color::RedLight;
+    }
+    else if (message_id == message_menu_grade_edit::WAIT_INPUT)
+    {
+        result_message.msg = "请输入...";
+        result_message.color = ftxui::Color::YellowLight;
+    }
+    else if (message_id == message_menu_grade_edit::READ_SUCCESSED)
+    {
+        result_message.msg = "读取成功!";
+        result_message.color = ftxui::Color::GreenLight;
+    }
+    else if (message_id == message_menu_grade_edit::READ_FAILED)
+    {
+        result_message.msg = "读取失败!";
+        result_message.color = ftxui::Color::RedLight;
+    }
+    else if (message_id == message_menu_grade_edit::DELETE_SUCCESSED)
+    {
+        result_message.msg = "删除成功!";
+        result_message.color = ftxui::Color::GreenLight;
+    }
+    else if (message_id == message_menu_grade_edit::DELETE_FAILED)
+    {
+        result_message.msg = "删除失败!";
+        result_message.color = ftxui::Color::RedLight;
+    }
+    else if (message_id == message_menu_grade_edit::WRITE_SUCCESSED_SWITCH_NEXT)
+    {
+        result_message.msg = "输入成功!已智能为您切换到下一个学生!";
+        result_message.color = ftxui::Color::GreenLight;
+    }
+    else if (message_id == message_menu_grade_edit::WRITE_SUCCESSED_LAST)
+    {
+        result_message.msg = "输入成功!已经是最后一个学生!";
+        result_message.color = ftxui::Color::GreenLight;
+    }
+    else if (message_id == message_menu_grade_edit::WRITE_FAILED)
+    {
+        result_message.msg = "写入失败!";
+        result_message.color = ftxui::Color::RedLight;
+    }
+
+    return result_message;
 }
