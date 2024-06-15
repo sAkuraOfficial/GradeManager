@@ -562,52 +562,52 @@ message App::get_message_menu_grade_edit(message_menu_grade_edit message_id)
     result_message.message_id = message_id;
     if (message_id == message_menu_grade_edit::NONE)
     {
-        result_message.msg = "当前消息未定义!";
+        result_message.msg = "👎🏻 当前消息未定义!";
         result_message.color = ftxui::Color::RedLight;
     }
     else if (message_id == message_menu_grade_edit::INPUT_ERROR)
     {
-        result_message.msg = "信息输入不完整,请检查!";
+        result_message.msg = "🐷 信息输入不完整,请检查!";
         result_message.color = ftxui::Color::RedLight;
     }
     else if (message_id == message_menu_grade_edit::WAIT_INPUT)
     {
-        result_message.msg = "请输入...";
+        result_message.msg = "😚 请输入...";
         result_message.color = ftxui::Color::YellowLight;
     }
     else if (message_id == message_menu_grade_edit::READ_SUCCESSED)
     {
-        result_message.msg = "读取成功!";
+        result_message.msg = "🥳 读取成功!";
         result_message.color = ftxui::Color::GreenLight;
     }
     else if (message_id == message_menu_grade_edit::READ_FAILED)
     {
-        result_message.msg = "读取失败!";
+        result_message.msg = "😅 读取失败!";
         result_message.color = ftxui::Color::RedLight;
     }
     else if (message_id == message_menu_grade_edit::DELETE_SUCCESSED)
     {
-        result_message.msg = "删除成功!";
+        result_message.msg = "🥳 删除成功!";
         result_message.color = ftxui::Color::GreenLight;
     }
     else if (message_id == message_menu_grade_edit::DELETE_FAILED)
     {
-        result_message.msg = "删除失败!";
+        result_message.msg = "😅 删除失败!";
         result_message.color = ftxui::Color::RedLight;
     }
     else if (message_id == message_menu_grade_edit::WRITE_SUCCESSED_SWITCH_NEXT)
     {
-        result_message.msg = "输入成功!已智能为您切换到下一个学生!";
+        result_message.msg = "🥳 输入成功!已智能为您切换到下一个学生!";
         result_message.color = ftxui::Color::GreenLight;
     }
     else if (message_id == message_menu_grade_edit::WRITE_SUCCESSED_LAST)
     {
-        result_message.msg = "输入成功!已经是最后一个学生!";
+        result_message.msg = "🥳 输入成功!已经是最后一个学生!";
         result_message.color = ftxui::Color::GreenLight;
     }
     else if (message_id == message_menu_grade_edit::WRITE_FAILED)
     {
-        result_message.msg = "写入失败!";
+        result_message.msg = "😅 写入失败!";
         result_message.color = ftxui::Color::RedLight;
     }
 
