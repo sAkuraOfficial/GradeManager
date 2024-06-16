@@ -14,7 +14,7 @@ void App::login()
     auto screen = ScreenInteractive::Fullscreen();
     screen.SetCursor(ftxui::Screen::Cursor(0, 0, ftxui::Screen::Cursor::Hidden));
     std::string user_id, user_pwd;
-    std::string message = "请登录......";
+    std::string message_grade_edit = "请登录......";
     bool reg_result = false;
 
     auto btn1 = Button(
@@ -25,7 +25,7 @@ void App::login()
         }
         else
         {
-            message = "登录失败，请检查账号密码";
+            message_grade_edit = "登录失败，请检查账号密码";
         }
     }
     );
@@ -34,7 +34,7 @@ void App::login()
         reg(reg_result);
         if (reg_result)
         {
-            message = "注册成功，请登录";
+            message_grade_edit = "注册成功，请登录";
         }
     }
     );
@@ -64,7 +64,7 @@ void App::login()
         }
         else
         {
-            message = "登录失败，请检查账号密码";
+            message_grade_edit = "登录失败，请检查账号密码";
         }
     };
 
@@ -80,7 +80,7 @@ void App::login()
                 separator(),
                 hbox({text("账号: "), input1->Render()}) | center,
                 hbox({text("密码: "), input2->Render()}) | center,
-                text(message),
+                text(message_grade_edit),
                 separator(),
                 hbox({
                     btn1->Render(),
@@ -248,7 +248,7 @@ void App::main_menu()
 Component App::menu_grade_edit()
 {
     // 存储提示消息
-    static message system_message = get_message_menu_grade_edit(message_menu_grade_edit::WAIT_INPUT);
+    static message_grade_edit system_message = get_message_menu_grade_edit(message_list_menu_grade_edit::WAIT_INPUT);
 
     // 存储是否仅自身lesson
     static bool only_self_lesson = true;
@@ -329,7 +329,7 @@ Component App::menu_grade_edit()
     checkbox_option.on_change = [&]() {
         lesson_select = student_select = 0;
         input1_value = input2_value = grade_total_text = "";
-        system_message = get_message_menu_grade_edit(message_menu_grade_edit::WAIT_INPUT);
+        system_message = get_message_menu_grade_edit(message_list_menu_grade_edit::WAIT_INPUT);
         dropdown1_text.clear();             // 重置科目下拉框
         dropdown2_text = {"未选择授课..."}; // 重置学生下拉框
         if (only_self_lesson)
@@ -345,7 +345,7 @@ Component App::menu_grade_edit()
     static auto button1 = Button("读取成绩", [&]() {
         if (lesson_select == 0 || student_select == 0)
         {
-            system_message = get_message_menu_grade_edit(message_menu_grade_edit::READ_FAILED);
+            system_message = get_message_menu_grade_edit(message_list_menu_grade_edit::READ_FAILED);
             return;
         }
         grade temp_grade;
@@ -354,29 +354,29 @@ Component App::menu_grade_edit()
         input2_value = read_ok ? std::to_string(temp_grade.grade_final) : "";
         grade_total = read_ok ? temp_grade.grade_total : 0.0f;
         grade_total_text = read_ok ? std::to_string(grade_total) : "";
-        system_message = read_ok ? get_message_menu_grade_edit(message_menu_grade_edit::READ_SUCCESSED) : get_message_menu_grade_edit(message_menu_grade_edit::READ_FAILED);
+        system_message = read_ok ? get_message_menu_grade_edit(message_list_menu_grade_edit::READ_SUCCESSED) : get_message_menu_grade_edit(message_list_menu_grade_edit::READ_FAILED);
     });
 
     static auto button2 = Button("删除成绩", [&]() {
         if (lesson_select == 0 || student_select == 0)
         {
-            system_message = get_message_menu_grade_edit(message_menu_grade_edit::DELETE_FAILED);
+            system_message = get_message_menu_grade_edit(message_list_menu_grade_edit::DELETE_FAILED);
             return;
         }
         if (sql_db->set_student_course_grade(result_student[student_select].student_id, result_lesson[lesson_select].course_id, 0.0f, 0.0f, 0.0f))
         {
             grade_daily = grade_final = grade_total = 0.0f; // 清空数据
             input1_value = input2_value = grade_total_text = "";
-            system_message = get_message_menu_grade_edit(message_menu_grade_edit::DELETE_SUCCESSED);
+            system_message = get_message_menu_grade_edit(message_list_menu_grade_edit::DELETE_SUCCESSED);
         }
         else
-            system_message = get_message_menu_grade_edit(message_menu_grade_edit::DELETE_FAILED); // 删除失败,则输入框保持原有数据
+            system_message = get_message_menu_grade_edit(message_list_menu_grade_edit::DELETE_FAILED); // 删除失败,则输入框保持原有数据
     });
 
     static auto button3 = Button("确认输入", [&]() {
         if (lesson_select == 0 || student_select == 0 || input1_value == "" || input2_value == "")
         {
-            system_message = get_message_menu_grade_edit(message_menu_grade_edit::INPUT_ERROR);
+            system_message = get_message_menu_grade_edit(message_list_menu_grade_edit::INPUT_ERROR);
             return;
         }
         bool write_ok = sql_db->set_student_course_grade(result_student[student_select].student_id, result_lesson[lesson_select].course_id, grade_daily, grade_final, grade_total);
@@ -392,15 +392,15 @@ Component App::menu_grade_edit()
                 input2_value = read_ok ? std::to_string(temp_grade.grade_final) : "";
                 grade_total = read_ok ? temp_grade.grade_total : 0.0f;
                 grade_total_text = read_ok ? std::to_string(grade_total) : "";
-                system_message = get_message_menu_grade_edit(message_menu_grade_edit::WRITE_SUCCESSED_SWITCH_NEXT);
+                system_message = get_message_menu_grade_edit(message_list_menu_grade_edit::WRITE_SUCCESSED_SWITCH_NEXT);
             }
             else
-                system_message = get_message_menu_grade_edit(message_menu_grade_edit::WRITE_SUCCESSED_LAST);
+                system_message = get_message_menu_grade_edit(message_list_menu_grade_edit::WRITE_SUCCESSED_LAST);
         }
         else
         {
             // 输入失败,保持原有数据
-            system_message = get_message_menu_grade_edit(message_menu_grade_edit::WRITE_FAILED);
+            system_message = get_message_menu_grade_edit(message_list_menu_grade_edit::WRITE_FAILED);
         }
     });
 
@@ -431,56 +431,56 @@ Component App::menu_grade_edit()
     return renderer;
 }
 
-message App::get_message_menu_grade_edit(message_menu_grade_edit message_id)
+message_grade_edit App::get_message_menu_grade_edit(message_list_menu_grade_edit message_id)
 {
-    message result_message;
+    message_grade_edit result_message;
     result_message.message_id = message_id;
-    if (message_id == message_menu_grade_edit::NONE)
+    if (message_id == message_list_menu_grade_edit::NONE)
     {
         result_message.msg = "👎🏻 当前消息未定义!";
         result_message.color = ftxui::Color::RedLight;
     }
-    else if (message_id == message_menu_grade_edit::INPUT_ERROR)
+    else if (message_id == message_list_menu_grade_edit::INPUT_ERROR)
     {
         result_message.msg = "🐷 信息输入不完整,请检查!";
         result_message.color = ftxui::Color::RedLight;
     }
-    else if (message_id == message_menu_grade_edit::WAIT_INPUT)
+    else if (message_id == message_list_menu_grade_edit::WAIT_INPUT)
     {
         result_message.msg = "😚 请输入...";
         result_message.color = ftxui::Color::YellowLight;
     }
-    else if (message_id == message_menu_grade_edit::READ_SUCCESSED)
+    else if (message_id == message_list_menu_grade_edit::READ_SUCCESSED)
     {
         result_message.msg = "🥳 读取成功!";
         result_message.color = ftxui::Color::GreenLight;
     }
-    else if (message_id == message_menu_grade_edit::READ_FAILED)
+    else if (message_id == message_list_menu_grade_edit::READ_FAILED)
     {
         result_message.msg = "😅 读取失败!";
         result_message.color = ftxui::Color::RedLight;
     }
-    else if (message_id == message_menu_grade_edit::DELETE_SUCCESSED)
+    else if (message_id == message_list_menu_grade_edit::DELETE_SUCCESSED)
     {
         result_message.msg = "🥳 删除成功!";
         result_message.color = ftxui::Color::GreenLight;
     }
-    else if (message_id == message_menu_grade_edit::DELETE_FAILED)
+    else if (message_id == message_list_menu_grade_edit::DELETE_FAILED)
     {
         result_message.msg = "😅 删除失败!";
         result_message.color = ftxui::Color::RedLight;
     }
-    else if (message_id == message_menu_grade_edit::WRITE_SUCCESSED_SWITCH_NEXT)
+    else if (message_id == message_list_menu_grade_edit::WRITE_SUCCESSED_SWITCH_NEXT)
     {
         result_message.msg = "🥳 输入成功!已智能为您切换到下一个学生!";
         result_message.color = ftxui::Color::GreenLight;
     }
-    else if (message_id == message_menu_grade_edit::WRITE_SUCCESSED_LAST)
+    else if (message_id == message_list_menu_grade_edit::WRITE_SUCCESSED_LAST)
     {
         result_message.msg = "🥳 输入成功!已经是最后一个学生!";
         result_message.color = ftxui::Color::GreenLight;
     }
-    else if (message_id == message_menu_grade_edit::WRITE_FAILED)
+    else if (message_id == message_list_menu_grade_edit::WRITE_FAILED)
     {
         result_message.msg = "😅 写入失败!";
         result_message.color = ftxui::Color::RedLight;
@@ -498,10 +498,10 @@ Component App::menu_grade_get()
     static std::string user_id = ""; // 教师id
     account.get_user_id(user_id);
 
-    // 存储学生信息
+    // 按课程查询_存储学生信息
     static std::vector<student_> result_student;
 
-    // 科目下拉框
+    // 按课程查询_科目下拉框
     static int lesson_select = 0;                   // 下拉框索引
     static std::vector<lesson> result_lesson;       // 查询lesson结果
     static std::vector<std::string> dropdown1_text; // 下拉框显示文本
@@ -519,7 +519,7 @@ Component App::menu_grade_get()
     };
     static auto dropdown1 = Dropdown(dropdown1_option);
 
-    // 初始化科目,初始化下拉框文本
+    // 按课程查询_初始化科目,初始化下拉框文本
     if (only_self_lesson)
         sql_db->get_teacher_lesson(user_id, result_lesson);
     else
@@ -527,13 +527,56 @@ Component App::menu_grade_get()
     for (auto &i : result_lesson)
         dropdown1_text.push_back(i.lesson_name);
 
+    // 按学生查询_输入框,学号,姓名
+    static std::string student_id;
+    static std::vector<grade> result_student_grades; // 存储某个学生的所有成绩
+    static auto input1 = Input(&student_id, "请输入学号", {.multiline = false}) | size(WIDTH, EQUAL, 20);
+
+    // 按学生查询_按钮,确认查询,清空按钮
+    static message_list_menu_grade_query query_message;
+    static auto button1 = Button(
+        "确认查询", [&]() {
+        if (sql_db->get_student_all_grade(student_id, result_student_grades))
+            query_message = message_list_menu_grade_query::QUERY_SUCCESSED;
+        else
+            query_message = message_list_menu_grade_query::QUERY_FAILED;
+    },
+        ButtonOption::Ascii()
+    );
+    static auto button2 = Button(
+        "清空结果", [&]() {
+        student_id.clear();
+        result_student_grades.clear();
+        query_message = message_list_menu_grade_query::WAIT_INPUT;
+    },
+        ButtonOption::Ascii()
+    );
+
     // 单选框,选择:按课程查询,按学生查询,按班级查询
     static int search_type = 0;
     static std::vector<std::string> radiobox_entries = {"按课程查询", "按学生查询", "按班级查询"};
     static auto radiobox_option = radiobox_option_beautiful();
+    radiobox_option.on_change = [&]() {
+        // 先统一初始化所有数据
+        lesson_select = 0;             // 重置科目下拉框
+        result_student.clear();        // 重置学生列表,search_type:0
+        result_student_grades.clear(); // 重置学生成绩,search_type:1
+        if (search_type == 0)
+        {
+        }
+        else if (search_type == 1)
+        {
+        }
+        else if (search_type == 2)
+        {
+        }
+    };
+    // 权宜之计,因为ftxui特性,tab容器不能复用组件
     static auto radiobox1 = Radiobox(radiobox_entries, &search_type, radiobox_option);
+    static auto radiobox2 = Radiobox(radiobox_entries, &search_type, radiobox_option);
+    static auto radiobox3 = Radiobox(radiobox_entries, &search_type, radiobox_option);
 
-    // 选择框_是否仅自身授课
+    // 选择框,是否仅自身授课
     static auto checkbox_option = checkbox_option_beautiful();
     checkbox_option.on_change = [&]() {
         lesson_select = 0;
@@ -547,75 +590,155 @@ Component App::menu_grade_get()
     };
     static auto checkbox1 = Checkbox("仅显示自身授课", &only_self_lesson, checkbox_option);
 
-    auto childs = Container::Vertical({dropdown1, radiobox1, checkbox1});
+    static auto childs1 = Container::Vertical({dropdown1, checkbox1, radiobox1});
+    static auto childs2 = Container::Vertical({input1, button1, button2, radiobox2});
+    static auto childs3 = Container::Vertical({radiobox3});
+    static auto childs = Container::Tab({childs1, childs2, childs3}, &search_type);
+    // auto childs = Container::Vertical({dropdown1, input1, button1, checkbox1, radiobox1});
 
     auto renderer = Renderer(childs, [&]() {
-        // 创建课程总表,并且初始化信息
-        std::string lesson_info;
-        int student_num = 0;
-        float grade_avg = 0.0f;
-        int fail_num = 0;
-        int pass_num = 0;
-        int excellent_num = 0;
-        lesson_info = result_lesson[lesson_select].lesson_name;
-        student_num = result_student.size();
-        float sum = 0.0f;
-        for (auto &i : result_student)
+        if (search_type == 0)
         {
-            grade temp_grade;
-            if (!sql_db->get_student_course_grade(i.student_id, result_lesson[lesson_select].course_id, temp_grade))
-                continue; // 读取失败,跳过
-            sum += temp_grade.grade_total;
-            if (temp_grade.grade_total < 60)
-                fail_num++;
-            else if (temp_grade.grade_total < 90)
-                pass_num++;
-            else
-                excellent_num++;
+            // 创建课程总表,并且初始化信息
+            std::string lesson_info;
+            int student_num = 0;
+            float grade_avg = 0.0f;
+            int fail_num = 0;
+            int pass_num = 0;
+            int excellent_num = 0;
+            lesson_info = result_lesson[lesson_select].lesson_name;
+            student_num = result_student.size();
+            float sum = 0.0f;
+            for (auto &i : result_student)
+            {
+                grade temp_grade;
+                if (!sql_db->get_student_course_grade(i.student_id, result_lesson[lesson_select].course_id, temp_grade))
+                    continue; // 读取失败,跳过
+                sum += temp_grade.grade_total;
+                if (temp_grade.grade_total < 60)
+                    fail_num++;
+                else if (temp_grade.grade_total < 90)
+                    pass_num++;
+                else
+                    excellent_num++;
+            }
+            if (student_num != 0)
+                grade_avg = sum / student_num;
+
+            // 创建授课成绩总表结构以及初始化表头数据
+            std::vector<Elements> table1_elements = CreateTableHead_Lesson(lesson_info, student_num, grade_avg, fail_num, pass_num, excellent_num);
+            //  创建学生成绩表结构以及初始化表头数据
+            std::vector<Elements> table2_elements = CreateTableHead_Grade();
+
+            // 插入学生成绩表数据
+            for (auto &i : result_student)
+            {
+                grade temp_grade;
+                if (!sql_db->get_student_course_grade(i.student_id, result_lesson[lesson_select].course_id, temp_grade))
+                    continue; // 读取失败,跳过
+                Elements temp_elements = {
+                    text(temp_grade.student_class),
+                    separator(),
+                    text(i.student_id + "-" + i.student_name),
+                    separator(),
+                    text(std::to_string(temp_grade.grade_daily)),
+                    separator(),
+                    text(std::to_string(temp_grade.grade_final)),
+                    separator(),
+                    text(std::to_string(temp_grade.grade_total)),
+                };
+                table2_elements.push_back(temp_elements);
+            }
+            // 创建成绩总表,学生成绩表
+            auto table1 = Table(table1_elements);
+            auto document_table1 = table1.Render();
+            auto table2 = Table(table2_elements);
+            auto document_table2 = table2.Render();
+            // 按课程查询
+            auto father_box = vbox({
+                hbox({dropdown1->Render(), checkbox1->Render(), filler(), radiobox1->Render()}),
+                separator(),
+                hbox({document_table1 | hcenter | border, document_table2 | hcenter | border}),
+            });
+            father_box |= border;
+            father_box |= size(WIDTH, EQUAL, ftxui::Terminal::Size().dimx);
+            father_box |= size(HEIGHT, EQUAL, ftxui::Terminal::Size().dimy);
+            father_box |= center;
+            return father_box;
         }
-        if (student_num != 0)
-            grade_avg = sum / student_num;
-
-        // 创建授课成绩总表结构以及初始化表头数据
-        std::vector<Elements> table1_elements = CreateTableHead_Lesson(lesson_info, student_num, grade_avg, fail_num, pass_num, excellent_num);
-        //  创建学生成绩表结构以及初始化表头数据
-        std::vector<Elements> table2_elements = CreateTableHead_Grade();
-
-        // 插入学生成绩表数据
-        for (auto &i : result_student)
+        else if (search_type == 1)
         {
-            grade temp_grade;
-            if (!sql_db->get_student_course_grade(i.student_id, result_lesson[lesson_select].course_id, temp_grade))
-                continue; // 读取失败,跳过
-            Elements temp_elements = {
-                text(temp_grade.student_class),
-                separator(),
-                text(i.student_id + "-" + i.student_name),
-                separator(),
-                text(std::to_string(temp_grade.grade_daily)),
-                separator(),
-                text(std::to_string(temp_grade.grade_final)),
-                separator(),
-                text(std::to_string(temp_grade.grade_total)),
-            };
-            table2_elements.push_back(temp_elements);
-        }
-        // 创建成绩总表,学生成绩表
-        auto table1 = Table(table1_elements);
-        auto document_table1 = table1.Render();
-        auto table2 = Table(table2_elements);
-        auto document_table2 = table2.Render();
+            // 按学生查询
+            std::vector<Elements> table1_elements = CreateTableHead_Student("等待查询...", "等待查询...", "等待查询...", 0.0f, 0);
+            std::vector<Elements> table2_elements = CreateTableHead_Student_Grades();
+            if (query_message == message_list_menu_grade_query::QUERY_SUCCESSED && result_student_grades.size())
+            {
+                // 学生资料总表,并且初始化信息
+                std::string temp_student_class = result_student_grades[0].student_class;
+                std::string temp_student_id = result_student_grades[0].student_id;
+                std::string temp_student_name = result_student_grades[0].student_name;
+                float temp_grade_avg_value = 0.0f;
+                sql_db->get_student_avg_grade(temp_student_id, temp_grade_avg_value);
+                std::vector<rank> temp_grade_rank_value;
+                sql_db->get_class_student_rank(temp_student_id, true, temp_grade_rank_value);
+                table1_elements = CreateTableHead_Student(temp_student_class, temp_student_id, temp_student_name, temp_grade_avg_value, temp_grade_rank_value[0].class_rank);
 
-        auto father_box = vbox({
-            hbox({dropdown1->Render(), filler(), radiobox1->Render(), filler(), checkbox1->Render()}),
-            separator(),
-            hbox({document_table1 | center | border, document_table2 | center | border}),
-        });
-        father_box |= border;
-        father_box |= size(WIDTH, EQUAL, ftxui::Terminal::Size().dimx);
-        father_box |= size(HEIGHT, EQUAL, ftxui::Terminal::Size().dimy);
-        father_box |= center;
-        return father_box;
+                // 创建学生成绩表结构以及初始化表头数据
+                // 插入学生成绩表数据
+                for (auto &i : result_student_grades)
+                {
+                    Elements temp_elements = {
+                        text(i.course_name),
+                        separator(),
+                        text(std::to_string(i.course_semester)),
+                        separator(),
+                        text(std::to_string(i.grade_daily)),
+                        separator(),
+                        text(std::to_string(i.grade_final)),
+                        separator(),
+                        text(std::to_string(i.grade_total)),
+                    };
+                    table2_elements.push_back(temp_elements);
+                }
+            }
+            auto table1 = Table(table1_elements);
+            auto document_table1 = table1.Render();
+            auto table2 = Table(table2_elements);
+            auto document_table2 = table2.Render();
+            auto father_box = vbox({
+                hbox({
+                    text("🆔 学号: "),
+                    input1->Render(),
+                    button1->Render(),
+                    button2->Render(),
+                    filler(),
+                    radiobox2->Render(),
+                }),
+                separator(),
+                hbox({
+                    document_table1 | hcenter | border,
+                    document_table2 | hcenter | border,
+                }),
+            });
+            father_box |= border;
+            father_box |= size(WIDTH, EQUAL, ftxui::Terminal::Size().dimx);
+            father_box |= size(HEIGHT, EQUAL, ftxui::Terminal::Size().dimy);
+            father_box |= center;
+            return father_box;
+        }
+        else if (search_type == 2)
+        {
+            // 按班级查询
+            auto father_box = vbox({
+                hbox({filler(), radiobox3->Render(), button1->Render(), filler()}),
+                separator(),
+            });
+            father_box |= border;
+            father_box |= size(WIDTH, EQUAL, ftxui::Terminal::Size().dimx);
+            father_box |= size(HEIGHT, EQUAL, ftxui::Terminal::Size().dimy);
+            father_box |= center;
+            return father_box;
+        }
     });
     return renderer;
 }

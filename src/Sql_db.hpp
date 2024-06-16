@@ -42,6 +42,14 @@ struct grade
     float grade_total = 0.0f;       // 总分
 };
 
+struct rank
+{
+    std::string student_name = ""; // 学生姓名
+    std::string student_id = "";   // 学生学号
+    float grade_total = 0.0f;      // 学生总分
+    int class_rank = 0;            // 班级排名
+};
+
 class Sql_db
 {
   private:
@@ -72,8 +80,15 @@ class Sql_db
     bool set_student_course_grade(std::string student_id, std::string course_id, float grade_daily, float grade_final, float grade_total);
 
     // 获取学生的某课程成绩
-    bool get_student_course_grade(std::string student_id,std::string course_id ,grade &grade);
+    bool get_student_course_grade(std::string student_id, std::string course_id, grade &grade);
 
     // 获取学生所有成绩
     bool get_student_all_grade(std::string student_id, std::vector<grade> &grades);
+
+    // 获取某个班级的所有学生的总分排名
+    // 提供两种模式,1.只返回该学生的排名,2.返回所有学生的排名
+    bool get_class_student_rank(std::string student_id, bool only_this_student, std::vector<rank> &ranks);
+
+    // 获取某个学生的平均分
+    bool get_student_avg_grade(std::string student_id, float &avg_grade);
 };

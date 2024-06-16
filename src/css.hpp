@@ -73,16 +73,46 @@ std::vector<Elements> CreateTableHead_Grade()
     return elements_arr;
 }
 
+std::vector<Elements> CreateTableHead_Student_Grades()
+{
+    // 课程名, 课程学期, 平时分, 期末分, 成绩
+    std::vector<Elements> elements_arr;
+    Elements table_head = {
+        text("课程名"),
+        separator(),
+        text("课程学期"),
+        separator(),
+        text("平时分"),
+        separator(),
+        text("期末分"),
+        separator(),
+        text("成绩"),
+    };
+    elements_arr.push_back(table_head);
+    return elements_arr;
+}
+
 std::vector<Elements> CreateTableHead_Lesson(std::string lesson_info, int student_num, float grade_avg, int fail_num, int pass_num, int excellent_num)
 {
     // 课程信息,学生数量,不及格人数(小于60分),及格人数(大于60分),优秀人数(大于90分),平均分,
     std::vector<Elements> elements_arr;
     elements_arr.push_back({text("📚 课  程"), separator(), text(lesson_info)});
     elements_arr.push_back({text("🙍🏻 人  数"), separator(), text(std::to_string(student_num))});
-    elements_arr.push_back({text("😅 不及格 "), separator(), text(std::to_string(fail_num))});
+    elements_arr.push_back({text("😅 不及格 "), separator(), text(std::to_string(fail_num)) | (fail_num > 0 ? color(Color::RedLight) : color(Color::GreenLight))});
     elements_arr.push_back({text("🤓 及  格 "), separator(), text(std::to_string(pass_num))});
     elements_arr.push_back({text("🤪 优  秀 "), separator(), text(std::to_string(excellent_num))});
     elements_arr.push_back({text("📊 平均分"), separator(), text(std::to_string(grade_avg))});
+    return elements_arr;
+}
 
+std::vector<Elements> CreateTableHead_Student(std::string class_name, std::string student_id,std::string student_name, float grade_avg, int grade_rank)
+{
+    // 所在班级,学号,姓名,平均分,班排名
+    std::vector<Elements> elements_arr;
+    elements_arr.push_back({text("🏫 班  级 "), separator(), text(class_name)});
+    elements_arr.push_back({text("🆔 学  号 "), separator(), text(student_id)});
+    elements_arr.push_back({text("😚 姓  名 "), separator(), text(student_name)});
+    elements_arr.push_back({text("💯 平均分 "), separator(), text(std::to_string(grade_avg))});
+    elements_arr.push_back({text("🥇 班排名 "), separator(), text(std::to_string(grade_rank))});
     return elements_arr;
 }

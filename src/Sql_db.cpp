@@ -180,6 +180,7 @@ bool Sql_db::get_course_student(std::string class_id, std::vector<student_> &stu
     }
 }
 
+// 设置某个学生的某个科目的成绩
 bool Sql_db::set_student_course_grade(std::string student_id, std::string course_id, float grade_daily, float grade_final, float grade_total)
 {
     try
@@ -204,6 +205,7 @@ bool Sql_db::set_student_course_grade(std::string student_id, std::string course
     }
 }
 
+// 获取某个学生的某个科目的成绩
 bool Sql_db::get_student_course_grade(std::string student_id, std::string course_id, grade &grade)
 {
     try
@@ -259,6 +261,7 @@ bool Sql_db::get_student_course_grade(std::string student_id, std::string course
     }
 }
 
+// 获取某个学生的所有科目的成绩
 bool Sql_db::get_student_all_grade(std::string student_id, std::vector<grade> &grades)
 {
     try
@@ -306,6 +309,99 @@ bool Sql_db::get_student_all_grade(std::string student_id, std::vector<grade> &g
         }
         grades = grades_temp;
         return true;
+    }
+    catch (const std::exception &e)
+    {
+        return false;
+    }
+}
+
+// 获取某个班级的所有学生的总分排名
+//  提供两种模式,1.只返回该学生的排名,2.返回所有学生的排名
+bool Sql_db::get_class_student_rank(std::string student_id, bool only_this_student, std::vector<rank> &ranks)
+{
+    try
+    {
+        std::string sql_query = "\
+        WITH StudentGradeTotal AS (\
+            SELECT\
+                Student.class_id,Student.user_id,SUM(grade.grade_total) AS total_grade\
+            FROM\
+                Student\
+            JOIN grade ON Student.user_id = grade.student_id\
+            GROUP BY\
+                Student.class_id, Student.user_id\
+        ),\
+        ClassRank AS (\
+            SELECT\
+                Class_.class_id,Account.user_name,Student.user_id,StudentGradeTotal.total_grade,\
+                RANK() OVER(PARTITION BY StudentGradeTotal.class_id ORDER BY StudentGradeTotal.total_grade DESC, Student.user_id) AS rank\
+            FROM\
+                StudentGradeTotal\
+            JOIN Student ON StudentGradeTotal.user_id = Student.user_id\
+            JOIN Account ON Student.user_id = Account.user_id\
+            JOIN Class_ ON Student.class_id = Class_.class_id\
+        )\
+        SELECT\
+            ClassRank.user_name,\
+            ClassRank.user_id,\
+            ClassRank.total_grade,\
+            ClassRank.rank\
+        FROM\
+            ClassRank\
+        WHERE\
+            ClassRank.class_id = (SELECT class_id FROM Student WHERE user_id = ?) AND\
+			ClassRank.user_id = ?\
+        ORDER BY\
+            ClassRank.rank;\
+        ";
+        SQLite::Statement query(*db, sql_query);
+        std::vector<rank> ranks_temp;
+        query.bind(1, student_id);
+        query.bind(2, student_id);
+        while (query.executeStep())
+        {
+            rank temp;
+            temp.student_name = query.getColumn("user_name").getString();
+            temp.student_id = query.getColumn("user_id").getString();
+            temp.grade_total = query.getColumn("total_grade").getDouble();
+            temp.class_rank = query.getColumn("rank").getInt();
+            ranks_temp.push_back(temp);
+            if (only_this_student)
+                break;
+        }
+        ranks = ranks_temp;
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        return false;
+    }
+}
+
+bool Sql_db::get_student_avg_grade(std::string student_id, float &avg_grade)
+{
+    try
+    {
+        std::string sql_query = "\
+		SELECT\
+			AVG(grade.grade_total) AS avg_grade\
+		FROM\
+			grade\
+		WHERE\
+			grade.student_id = ?\
+		";
+        SQLite::Statement query(*db, sql_query);
+        query.bind(1, student_id);
+        if (query.executeStep())
+        {
+            avg_grade = query.getColumn("avg_grade").getDouble();
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
     catch (const std::exception &e)
     {
