@@ -206,7 +206,6 @@ void App::main_menu()
     std::vector<std::string> menu_items = {
         "成绩编辑",
         "成绩查询",
-        "数据看板",
         "导出数据",
         "退出系统"
     };
@@ -216,7 +215,7 @@ void App::main_menu()
     auto main_menu_tab = Container::Tab(
         {
             menu_grade_edit(),
-            menu_grade_search(),
+            menu_grade_get(),
         },
         &menu_items_selected
     );
@@ -244,130 +243,6 @@ void App::main_menu()
         return father_box | border;
     });
     screen.Loop(component);
-}
-
-Component App::menu_grade_search()
-{
-    // 静态标志变量
-    static int dropdown1_select = 0;
-
-    // 获取当前教师id
-    static std::string teacher_id = "";
-    account.get_user_id(teacher_id);
-
-    // 获取默认课程
-    static std::vector<lesson> result_course;
-    sql_db->get_teacher_lesson(teacher_id, result_course);
-
-    // 课程的所有学生
-    static std::vector<student_> result_student;
-
-    // 课程的所有学生的成绩
-    static std::vector<grade> result_grade;
-
-    // 设置下拉框标题:所有课程
-    static std::vector<std::string> dropdown1_text;
-    for (auto &i : result_course)
-    {
-        dropdown1_text.push_back(i.lesson_name);
-    }
-
-    // 下拉框
-    static DropdownOption dropdown1_option;
-    dropdown1_option.radiobox.entries = &dropdown1_text;
-    dropdown1_option.radiobox.selected = &dropdown1_select;
-    dropdown1_option.radiobox.on_change = [&]() {
-        if (dropdown1_select != 0)
-        {
-            sql_db->get_course_student(result_course[dropdown1_select].class_id, result_student);
-            result_student.erase(result_student.begin());
-            result_grade.clear();
-            for (auto &i : result_student)
-            {
-                grade temp;
-                sql_db->get_student_course_grade(i.student_id, result_course[dropdown1_select].course_id, temp);
-                result_grade.push_back(temp);
-            }
-        }
-    };
-
-    dropdown1_option.transform = [](bool open, Element checkbox, Element radiobox) {
-        if (open)
-            return vbox({
-                checkbox | inverted,
-                radiobox | vscroll_indicator | frame |
-                    size(HEIGHT, LESS_THAN, 5),
-                filler(),
-            });
-        return vbox({checkbox, filler()});
-    };
-
-    static auto dropdown1 = Dropdown(dropdown1_option);
-
-    static auto childs = Container::Vertical({dropdown1});
-
-    static auto renderer = Renderer(childs, [&]() {
-        Elements childrens = {
-            dropdown1->Render(),
-            separator(),
-        };
-
-        // 创建表头数据
-        Elements table_head = {
-            text("班级"),
-            separator(),
-            text("学号姓名"),
-            separator(),
-            text("平时分"),
-            separator(),
-            text("期末分"),
-            separator(),
-            text("总分"),
-        };
-
-        std::vector<Elements> elements_arr;
-        elements_arr.push_back(table_head);
-
-        // 创建表格的数据
-        for (auto &i : result_student)
-        {
-            if (i.student_id == "" || i.student_name == "")
-                continue;
-            grade temp_grade;
-            if (!sql_db->get_student_course_grade(i.student_id, result_course[dropdown1_select].course_id, temp_grade))
-            {
-                continue; // 读取失败
-            }
-            Elements temp_elements = {
-                text(temp_grade.student_class),
-                separator(),
-                text(i.student_id + "-" + i.student_name),
-                separator(),
-                text(std::to_string(temp_grade.grade_daily)),
-                separator(),
-                text(std::to_string(temp_grade.grade_final)),
-                separator(),
-                text(std::to_string(temp_grade.grade_total)),
-            };
-            elements_arr.push_back(temp_elements);
-        }
-
-        // 创建table
-        auto table_ = Table(elements_arr);
-        table_.SelectAll().Border(LIGHT);
-        table_.SelectAll().SeparatorHorizontal(LIGHT);
-        auto r = table_.Render();
-        childrens.push_back(vbox({r}) | center);
-
-        auto box = vbox({childrens});
-        box |= border;
-        box |= size(WIDTH, EQUAL, ftxui::Terminal::Size().dimx);
-        box |= size(HEIGHT, EQUAL, ftxui::Terminal::Size().dimy);
-        box |= center;
-
-        return box;
-    });
-    return renderer;
 }
 
 Component App::menu_grade_edit()
@@ -612,4 +487,135 @@ message App::get_message_menu_grade_edit(message_menu_grade_edit message_id)
     }
 
     return result_message;
+}
+
+Component App::menu_grade_get()
+{
+    // 存储是否仅自身lesson
+    static bool only_self_lesson = true;
+
+    // 存储教师id
+    static std::string user_id = ""; // 教师id
+    account.get_user_id(user_id);
+
+    // 存储学生信息
+    static std::vector<student_> result_student;
+
+    // 科目下拉框
+    static int lesson_select = 0;                   // 下拉框索引
+    static std::vector<lesson> result_lesson;       // 查询lesson结果
+    static std::vector<std::string> dropdown1_text; // 下拉框显示文本
+    static auto dropdown1_option = dropdown_option_beautiful(&dropdown1_text, &lesson_select);
+    dropdown1_option.radiobox.on_change = [&]() {
+        if (lesson_select) // 选中非0,0是提示语
+        {
+            if (sql_db->get_course_student(result_lesson[lesson_select].class_id, result_student))
+                result_student.erase(result_student.begin()); // 删除提示语
+            else
+                result_student.clear(); // 重置学生信息
+        }
+        else
+            result_student.clear(); // 重置学生信息
+    };
+    static auto dropdown1 = Dropdown(dropdown1_option);
+
+    // 初始化科目,初始化下拉框文本
+    if (only_self_lesson)
+        sql_db->get_teacher_lesson(user_id, result_lesson);
+    else
+        sql_db->get_teacher_lesson("%", result_lesson);
+    for (auto &i : result_lesson)
+        dropdown1_text.push_back(i.lesson_name);
+
+    // 单选框,选择:按课程查询,按学生查询,按班级查询
+    static int search_type = 0;
+    static std::vector<std::string> radiobox_entries = {"按课程查询", "按学生查询", "按班级查询"};
+    static auto radiobox_option = radiobox_option_beautiful();
+    static auto radiobox1 = Radiobox(radiobox_entries, &search_type, radiobox_option);
+
+    // 选择框_是否仅自身授课
+    static auto checkbox_option = checkbox_option_beautiful();
+    checkbox_option.on_change = [&]() {
+        lesson_select = 0;
+        dropdown1_text.clear(); // 重置科目下拉框
+        if (only_self_lesson)
+            sql_db->get_teacher_lesson(user_id, result_lesson);
+        else
+            sql_db->get_teacher_lesson("%", result_lesson);
+        for (auto &i : result_lesson)
+            dropdown1_text.push_back(i.lesson_name);
+    };
+    static auto checkbox1 = Checkbox("仅显示自身授课", &only_self_lesson, checkbox_option);
+
+    auto childs = Container::Vertical({dropdown1, radiobox1, checkbox1});
+
+    auto renderer = Renderer(childs, [&]() {
+        // 创建课程总表,并且初始化信息
+        std::string lesson_info;
+        int student_num = 0;
+        float grade_avg = 0.0f;
+        int fail_num = 0;
+        int pass_num = 0;
+        int excellent_num = 0;
+        lesson_info = result_lesson[lesson_select].lesson_name;
+        student_num = result_student.size();
+        float sum = 0.0f;
+        for (auto &i : result_student)
+        {
+            grade temp_grade;
+            if (!sql_db->get_student_course_grade(i.student_id, result_lesson[lesson_select].course_id, temp_grade))
+                continue; // 读取失败,跳过
+            sum += temp_grade.grade_total;
+            if (temp_grade.grade_total < 60)
+                fail_num++;
+            else if (temp_grade.grade_total < 90)
+                pass_num++;
+            else
+                excellent_num++;
+        }
+        if (student_num != 0)
+            grade_avg = sum / student_num;
+
+        // 创建授课成绩总表结构以及初始化表头数据
+        std::vector<Elements> table1_elements = CreateTableHead_Lesson(lesson_info, student_num, grade_avg, fail_num, pass_num, excellent_num);
+        //  创建学生成绩表结构以及初始化表头数据
+        std::vector<Elements> table2_elements = CreateTableHead_Grade();
+
+        // 插入学生成绩表数据
+        for (auto &i : result_student)
+        {
+            grade temp_grade;
+            if (!sql_db->get_student_course_grade(i.student_id, result_lesson[lesson_select].course_id, temp_grade))
+                continue; // 读取失败,跳过
+            Elements temp_elements = {
+                text(temp_grade.student_class),
+                separator(),
+                text(i.student_id + "-" + i.student_name),
+                separator(),
+                text(std::to_string(temp_grade.grade_daily)),
+                separator(),
+                text(std::to_string(temp_grade.grade_final)),
+                separator(),
+                text(std::to_string(temp_grade.grade_total)),
+            };
+            table2_elements.push_back(temp_elements);
+        }
+        // 创建成绩总表,学生成绩表
+        auto table1 = Table(table1_elements);
+        auto document_table1 = table1.Render();
+        auto table2 = Table(table2_elements);
+        auto document_table2 = table2.Render();
+
+        auto father_box = vbox({
+            hbox({dropdown1->Render(), filler(), radiobox1->Render(), filler(), checkbox1->Render()}),
+            separator(),
+            hbox({document_table1 | center | border, document_table2 | center | border}),
+        });
+        father_box |= border;
+        father_box |= size(WIDTH, EQUAL, ftxui::Terminal::Size().dimx);
+        father_box |= size(HEIGHT, EQUAL, ftxui::Terminal::Size().dimy);
+        father_box |= center;
+        return father_box;
+    });
+    return renderer;
 }

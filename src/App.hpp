@@ -26,19 +26,19 @@ class App
     void login();
     void reg(bool &reg_result);
     void main_menu();
-    Component menu_grade_search();
     Component menu_grade_edit();
+    Component menu_grade_get();
     message get_message_menu_grade_edit(message_menu_grade_edit message_id);
 };
 
-enum sex
+enum class sex
 {
     noneSex,
     male,
     female
 };
 
-enum user_type
+enum class user_type
 {
     noneType,
     student,
