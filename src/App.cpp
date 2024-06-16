@@ -255,7 +255,7 @@ Component App::menu_grade_edit()
     static message_grade_edit system_message = get_message_menu_grade_edit(message_list_menu_grade_edit::WAIT_INPUT);
 
     // 存储是否仅自身lesson
-    static bool only_self_lesson = true;
+    static bool only_self_lesson = false;
 
     // 存储教师id
     static std::string user_id = ""; // 教师id
@@ -499,7 +499,7 @@ Component App::menu_grade_get()
     static message_list_menu_grade_query query_message;
 
     // 存储是否仅自身lesson
-    static bool only_self_lesson = true;
+    static bool only_self_lesson = false;
 
     // 存储教师id
     static std::string user_id = ""; // 教师id
