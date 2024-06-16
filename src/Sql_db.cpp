@@ -379,6 +379,63 @@ bool Sql_db::get_class_student_rank(std::string student_id, bool only_this_stude
     }
 }
 
+bool Sql_db::get_class_student_rank(std::string class_id, std::vector<rank> &ranks)
+{
+    try
+    {
+        std::string sql_query = "\
+        WITH StudentGradeTotal AS (\
+            SELECT\
+                Student.class_id,Student.user_id,SUM(grade.grade_total) AS total_grade\
+            FROM\
+                Student\
+            JOIN grade ON Student.user_id = grade.student_id\
+            GROUP BY\
+                Student.class_id, Student.user_id\
+        ),\
+        ClassRank AS (\
+            SELECT\
+                Class_.class_id,Account.user_name,Student.user_id,StudentGradeTotal.total_grade,\
+                RANK() OVER(PARTITION BY StudentGradeTotal.class_id ORDER BY StudentGradeTotal.total_grade DESC, Student.user_id) AS rank\
+            FROM\
+                StudentGradeTotal\
+            JOIN Student ON StudentGradeTotal.user_id = Student.user_id\
+            JOIN Account ON Student.user_id = Account.user_id\
+            JOIN Class_ ON Student.class_id = Class_.class_id\
+        )\
+        SELECT\
+            ClassRank.user_name,\
+            ClassRank.user_id,\
+            ClassRank.total_grade,\
+            ClassRank.rank\
+        FROM\
+            ClassRank\
+        WHERE\
+            ClassRank.class_id = ? \
+        ORDER BY\
+            ClassRank.rank;\
+        ";
+        SQLite::Statement query(*db, sql_query);
+        std::vector<rank> ranks_temp;
+        query.bind(1, class_id);
+        while (query.executeStep())
+        {
+            rank temp;
+            temp.student_name = query.getColumn("user_name").getString();
+            temp.student_id = query.getColumn("user_id").getString();
+            temp.grade_total = query.getColumn("total_grade").getDouble();
+            temp.class_rank = query.getColumn("rank").getInt();
+            ranks_temp.push_back(temp);
+        }
+        ranks = ranks_temp;
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        return false;
+    }
+}
+
 bool Sql_db::get_student_avg_grade(std::string student_id, float &avg_grade)
 {
     try
@@ -402,6 +459,48 @@ bool Sql_db::get_student_avg_grade(std::string student_id, float &avg_grade)
         {
             return false;
         }
+    }
+    catch (const std::exception &e)
+    {
+        return false;
+    }
+}
+
+bool Sql_db::get_all_class_info(std::vector<class_> &classes)
+{
+    try
+    {
+        std::vector<class_> classes_temp;
+        classes_temp.push_back({"请选择...", "请选择...", 0, {}, {}});
+        // 先获取班级信息
+        std::string sql_query1 = "\
+        SELECT\
+            (SUBSTR(CAST(Class_.entry_year AS TEXT), 3)) || Major.major_name || Class_.id || '班' AS class_name,\
+            Class_.class_id,\
+            COUNT(Student.user_id) AS stu_num\
+        FROM \
+            Class_\
+        INNER JOIN \
+            Major ON Class_.major_id = Major.major_id\
+        LEFT JOIN \
+            Student ON Class_.class_id = Student.class_id\
+        GROUP BY \
+            Class_.class_id;\
+	    ";
+        SQLite::Statement query(*db, sql_query1);
+        while (query.executeStep())
+        {
+            class_ temp;
+            temp.class_name = query.getColumn("class_name").getString();
+            temp.class_id = query.getColumn("class_id").getString();
+            temp.stu_num = query.getColumn("stu_num").getInt();
+            classes_temp.push_back(temp);
+        }
+
+        // 备注:ranks和grades没有初始化
+
+        classes = classes_temp;
+        return true;
     }
     catch (const std::exception &e)
     {

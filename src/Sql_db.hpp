@@ -2,6 +2,10 @@
 #include <SQLiteCpp/SQLiteCpp.h>
 #include <iostream>
 #include <string>
+#include <vector>
+
+struct grade;
+struct rank;
 
 struct college
 {
@@ -15,13 +19,22 @@ struct major
     int major_id = 0;
 };
 
-struct lesson
+struct lesson // 这是授课,和下面的班级不一样
 {
     std::string lesson_name = "";     // 授课名称
     std::string class_id = "";        // 授课对应班级
     std::string course_id = "";       // 课程id
     std::string teacher_id = "";      // 教师id
     float grade_daily_percent = 0.0f; // 平时成绩占比
+};
+
+struct class_
+{
+    std::string class_name = "";        // 如22计科7班
+    std::string class_id = "";          // 班级id
+    int stu_num = 0;                    // 学生人数
+    std::vector<grade> students_grades; // 所有学生的所有成绩
+    std::vector<rank> students_ranks;   // 所有学生的所有总分排名
 };
 
 struct student_
@@ -89,6 +102,12 @@ class Sql_db
     // 提供两种模式,1.只返回该学生的排名,2.返回所有学生的排名
     bool get_class_student_rank(std::string student_id, bool only_this_student, std::vector<rank> &ranks);
 
+    // (重载函数)获取某个班级的所有学生的总分排名
+    bool get_class_student_rank(std::string class_id, std::vector<rank> &ranks);
+
     // 获取某个学生的平均分
     bool get_student_avg_grade(std::string student_id, float &avg_grade);
+
+    // 获取所有班级
+    bool get_all_class_info(std::vector<class_> &classes);
 };
