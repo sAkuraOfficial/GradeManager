@@ -1,7 +1,10 @@
 # 63.学生成绩管理系统的设计与实现
 
-## 小组成员
+![main](doc/README/main.gif)
 
+## 小组
+
+**2022级计算机科学与技术7班数据结构实训作业**
 **周子豪 邓嘉俊 王嘉俊**
 
 ## 问题描述
@@ -15,6 +18,17 @@
 3. 可以查询某门课程的平均分,学生的排名,不同分数段的学生人数及学生信息等
 4. 可以查询某学生的各课程分数,总分及学生的班级排名等
 5. 可以按学号排序输出全部学生的成绩信息、总分及班级排名等
+
+## 界面展示
+
+登录界面
+![ui_login](doc/README/ui_login.png)
+注册界面
+![ui_login](doc/README/ui_register.png)
+成绩编辑页面
+![ui_edit](doc/README/ui_grade_edit.png)
+成绩查询页面
+![ui_get](doc/README/ui_grade_get.png)
 
 ## 项目打开方法
 
