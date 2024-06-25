@@ -22,9 +22,6 @@ set(SQLITECPP_RUN_CPPLINT OFF)
 
 add_subdirectory(external/ftxui)
 add_subdirectory(external/SQLiteCpp)
-set(ZLIB_ROOT ${CMAKE_SOURCE_DIR}/external/zlib) #zlib
-add_subdirectory(external/libxlsxwriter)
-add_subdirectory(external/nativefiledialog-extended)
 
 file(GLOB SRC ./src/*.cpp) #遍历所有cpp文件
 file(GLOB INC ./src/*.hpp) #遍历所有hpp文件
@@ -40,8 +37,6 @@ target_link_libraries(GradeManager
         PRIVATE ftxui::component # Not needed for this example.
         PRIVATE SQLiteCpp
         PRIVATE sqlite3
-        PRIVATE nfd
-        PRIVATE xlsxwriter
 )
 
 # 指定grademanager.db文件的源路径
