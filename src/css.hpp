@@ -92,19 +92,33 @@ std::vector<Elements> CreateTableHead_Student_Grades()
     return elements_arr;
 }
 
+// 本函数是为按课程查询提供,用于查询所有学生的所有成绩
+std::vector<Elements> CreateTableHead_Class_Students_Grades()
+{
+    // 课程名, 课程学期, 平时分, 期末分, 成绩
+    std::vector<Elements> elements_arr;
+    Elements table_head = {
+        text("学号"),
+        text("姓名"),
+        text("课程名"),
+        text("课程学期"),
+        text("平时分"),
+        text("期末分"),
+        text("成绩"),
+    };
+    elements_arr.push_back(table_head);
+    return elements_arr;
+}
+
 std::vector<Elements> CreateTableHead_ClassInfo_students()
 {
     // 学号,姓名,总分,平均分,班级排名
     std::vector<Elements> elements_arr;
     Elements table_head = {
         text("学号"),
-        separator(),
         text("姓名"),
-        separator(),
         text("总分"),
-        separator(),
         text("平均分"),
-        separator(),
         text("排名"),
     };
     elements_arr.push_back(table_head);
@@ -124,7 +138,7 @@ std::vector<Elements> CreateTableHead_Lesson(std::string lesson_info, int studen
     return elements_arr;
 }
 
-std::vector<Elements> CreateTableHead_Student(std::string class_name, std::string student_id,std::string student_name, float grade_total,float grade_avg, int grade_rank)
+std::vector<Elements> CreateTableHead_Student(std::string class_name, std::string student_id, std::string student_name, float grade_total, float grade_avg, int grade_rank)
 {
     // 所在班级,学号,姓名,平均分,班排名
     std::vector<Elements> elements_arr;
@@ -137,11 +151,11 @@ std::vector<Elements> CreateTableHead_Student(std::string class_name, std::strin
     return elements_arr;
 }
 
-//班级名,学生人数
+// 班级名,学生人数
 std::vector<Elements> CreateTableHead_Class(std::string class_name, int student_num)
 {
-	std::vector<Elements> elements_arr;
-	elements_arr.push_back({text("🏫 班  级 "), separator(), text(class_name)});
-	elements_arr.push_back({text("🙍🏻 人  数"), separator(), text(std::to_string(student_num))});
-	return elements_arr;
+    std::vector<Elements> elements_arr;
+    elements_arr.push_back({text("🏫 班  级 "), text(class_name)});
+    elements_arr.push_back({text("🙍🏻 人  数"), text(std::to_string(student_num))});
+    return elements_arr;
 }

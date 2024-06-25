@@ -206,12 +206,11 @@ void App::main_menu()
     std::vector<std::string> menu_items = {
         "成绩编辑",
         "成绩查询",
-        "导出数据",
         "退出登录"
     };
     static auto main_menu_option = MenuOption::HorizontalAnimated();
     main_menu_option.on_change = [&]() {
-        if (menu_items_selected == 3)
+        if (menu_items_selected == 2)
             screen.Exit();
     };
     auto main_menu = Menu(&menu_items, &menu_items_selected, main_menu_option);
@@ -255,7 +254,7 @@ Component App::menu_grade_edit()
     static message_grade_edit system_message = get_message_menu_grade_edit(message_list_menu_grade_edit::WAIT_INPUT);
 
     // 存储是否仅自身lesson
-    static bool only_self_lesson = false;
+    static bool only_self_lesson = true;
 
     // 存储教师id
     static std::string user_id = ""; // 教师id
@@ -435,64 +434,6 @@ Component App::menu_grade_edit()
     return renderer;
 }
 
-message_grade_edit App::get_message_menu_grade_edit(message_list_menu_grade_edit message_id)
-{
-    message_grade_edit result_message;
-    result_message.message_id = message_id;
-    if (message_id == message_list_menu_grade_edit::NONE)
-    {
-        result_message.msg = "👎🏻 当前消息未定义!";
-        result_message.color = ftxui::Color::RedLight;
-    }
-    else if (message_id == message_list_menu_grade_edit::INPUT_ERROR)
-    {
-        result_message.msg = "🐷 信息输入不完整,请检查!";
-        result_message.color = ftxui::Color::RedLight;
-    }
-    else if (message_id == message_list_menu_grade_edit::WAIT_INPUT)
-    {
-        result_message.msg = "😚 请输入...";
-        result_message.color = ftxui::Color::YellowLight;
-    }
-    else if (message_id == message_list_menu_grade_edit::READ_SUCCESSED)
-    {
-        result_message.msg = "🥳 读取成功!";
-        result_message.color = ftxui::Color::GreenLight;
-    }
-    else if (message_id == message_list_menu_grade_edit::READ_FAILED)
-    {
-        result_message.msg = "😅 读取失败!";
-        result_message.color = ftxui::Color::RedLight;
-    }
-    else if (message_id == message_list_menu_grade_edit::DELETE_SUCCESSED)
-    {
-        result_message.msg = "🥳 删除成功!";
-        result_message.color = ftxui::Color::GreenLight;
-    }
-    else if (message_id == message_list_menu_grade_edit::DELETE_FAILED)
-    {
-        result_message.msg = "😅 删除失败!";
-        result_message.color = ftxui::Color::RedLight;
-    }
-    else if (message_id == message_list_menu_grade_edit::WRITE_SUCCESSED_SWITCH_NEXT)
-    {
-        result_message.msg = "🥳 输入成功!已智能为您切换到下一个学生!";
-        result_message.color = ftxui::Color::GreenLight;
-    }
-    else if (message_id == message_list_menu_grade_edit::WRITE_SUCCESSED_LAST)
-    {
-        result_message.msg = "🥳 输入成功!已经是最后一个学生!";
-        result_message.color = ftxui::Color::GreenLight;
-    }
-    else if (message_id == message_list_menu_grade_edit::WRITE_FAILED)
-    {
-        result_message.msg = "😅 写入失败!";
-        result_message.color = ftxui::Color::RedLight;
-    }
-
-    return result_message;
-}
-
 Component App::menu_grade_get()
 {
     // 系统信息
@@ -594,6 +535,18 @@ Component App::menu_grade_get()
     };
     static auto dropdown2 = Dropdown(dropdown2_option);
 
+    // 按班级查询_单选框,选:学生整体成绩,所有学生具体成绩
+    static std::vector<std::string> radiobox_student_grade_type_entries = {"整体成绩", "所有成绩"};
+    static int radiobox_student_grade_type_select = 0;
+    static auto radiobox_student_grade_type_option = radiobox_option_beautiful();
+    static auto radiobox_student_grade_type = Radiobox(radiobox_student_grade_type_entries, &radiobox_student_grade_type_select, radiobox_student_grade_type_option);
+
+    // 按班级查询_单选框,选择排序方式:按学号排序,按成绩排序
+    static std::vector<std::string> radiobox_rank_type_entries = {"学号排序", "成绩排序"};
+    static int radiobox_rank_type_select = 0;
+    static auto radiobox_rank_typeoption = radiobox_option_beautiful();
+    static auto radiobox_rank_type = Radiobox(radiobox_rank_type_entries, &radiobox_rank_type_select, radiobox_rank_typeoption);
+
     // 选择框,是否仅自身授课
     static auto checkbox_option = checkbox_option_beautiful();
     checkbox_option.on_change = [&]() {
@@ -643,7 +596,7 @@ Component App::menu_grade_get()
 
     static auto childs1 = Container::Vertical({dropdown1, checkbox1, radiobox1});
     static auto childs2 = Container::Vertical({input1, button1, button2, radiobox2});
-    static auto childs3 = Container::Vertical({dropdown2, radiobox3});
+    static auto childs3 = Container::Vertical({dropdown2, radiobox3, radiobox_student_grade_type, radiobox_rank_type});
     static auto childs = Container::Tab({childs1, childs2, childs3}, &search_type);
     // auto childs = Container::Vertical({dropdown1, input1, button1, checkbox1, radiobox1});
 
@@ -709,7 +662,10 @@ Component App::menu_grade_get()
             auto father_box = vbox({
                 hbox({dropdown1->Render(), checkbox1->Render(), filler(), radiobox1->Render()}),
                 separator(),
-                hbox({document_table1 | hcenter | border, document_table2 | hcenter | border}),
+                hbox({
+                    document_table1 | hcenter | border,
+                    document_table2 | hcenter | border,
+                }) | center,
             });
             father_box |= border;
             father_box |= size(WIDTH, EQUAL, ftxui::Terminal::Size().dimx);
@@ -769,7 +725,7 @@ Component App::menu_grade_get()
                 hbox({
                     document_table1 | hcenter | border,
                     document_table2 | hcenter | border,
-                }),
+                }) | center,
             });
             father_box |= border;
             father_box |= size(WIDTH, EQUAL, ftxui::Terminal::Size().dimx);
@@ -781,42 +737,91 @@ Component App::menu_grade_get()
         {
             // 按班级查询
             std::vector<Elements> table1_elements = CreateTableHead_Class("等待查询...", 0);
-            std::vector<Elements> table2_elements = CreateTableHead_ClassInfo_students();
+            std::vector<Elements> table2_elements = radiobox_student_grade_type_select == 0 ? CreateTableHead_ClassInfo_students() : CreateTableHead_Class_Students_Grades(); // 0:整体成绩,1:所有成绩
 
             if (query_message == message_list_menu_grade_query::QUERY_SUCCESSED && result_class[class_select].students_ranks.size() && class_select)
             {
                 table1_elements = CreateTableHead_Class(result_class[class_select].class_name, result_class[class_select].stu_num);
-                for (auto &i : result_class[class_select].students_ranks)
+                if (radiobox_student_grade_type_select == 0)
                 {
-                    float avg = 0.0f;
-                    sql_db->get_student_avg_grade(i.student_id, avg);
-                    Elements temp_elements = {
-                        text(i.student_id),
-                        separator(),
-                        text(i.student_name),
-                        separator(),
-                        text(std::to_string(i.grade_total)),
-                        separator(),
-                        text(std::to_string(avg)),
-                        separator(),
-                        text(std::to_string(i.class_rank)),
-                    };
-                    table2_elements.push_back(temp_elements);
+                    // 整体成绩
+                    if (radiobox_rank_type_select == 0)
+                    {
+                        std::sort(result_class[class_select].students_ranks.begin(), result_class[class_select].students_ranks.end(), [](rank a, rank b) {
+                            return a.student_id < b.student_id;
+                        });
+                    }
+                    else
+                    {
+                        std::sort(result_class[class_select].students_ranks.begin(), result_class[class_select].students_ranks.end(), [](rank a, rank b) {
+                            return a.grade_total > b.grade_total;
+                        });
+                    }
+                    for (auto &i : result_class[class_select].students_ranks)
+                    {
+                        float avg = 0.0f;
+                        sql_db->get_student_avg_grade(i.student_id, avg);
+                        Elements temp_elements = {
+                            text(i.student_id),
+                            text(i.student_name),
+                            text(std::to_string(i.grade_total)),
+                            text(std::to_string(avg)),
+                            text(std::to_string(i.class_rank)),
+                        };
+                        table2_elements.push_back(temp_elements);
+                    }
+                }
+                else
+                {
+                    // 所有具体成绩
+                    if (radiobox_rank_type_select == 0)
+                    {
+                        std::sort(result_class[class_select].students_grades.begin(), result_class[class_select].students_grades.end(), [](grade a, grade b) {
+                            return a.student_id < b.student_id;
+                        });
+                    }
+                    else
+                    {
+                        std::sort(result_class[class_select].students_grades.begin(), result_class[class_select].students_grades.end(), [](grade a, grade b) {
+                            return a.grade_total > b.grade_total;
+                        });
+                    }
+                    for (auto &i : result_class[class_select].students_grades)
+                    {
+                        Elements temp_elements = {
+                            text(i.student_id),
+                            text(i.student_name),
+                            text(i.course_name),
+                            text(std::to_string(i.course_semester)),
+                            text(std::to_string(i.grade_daily)),
+                            text(std::to_string(i.grade_final)),
+                            text(std::to_string(i.grade_total)),
+                        };
+                        table2_elements.push_back(temp_elements);
+                    }
                 }
             }
 
             auto table1 = Table(table1_elements);
+            table1.SelectAll().Separator(LIGHT);
             auto document_table1 = table1.Render();
             auto table2 = Table(table2_elements);
+            table2.SelectAll().Separator(LIGHT);
             auto document_table2 = table2.Render();
 
             auto father_box = vbox({
                 hbox({dropdown2->Render(), filler(), radiobox3->Render()}),
                 separator(),
                 hbox({
-                    document_table1 | border | hcenter,
+                    vbox({
+                        document_table1 | hcenter,
+                        separator(),
+                        radiobox_student_grade_type->Render(),
+                        separator(),
+                        radiobox_rank_type->Render(),
+                    }) | border,
                     document_table2 | border | hcenter,
-                }),
+                }) | center,
             });
             father_box |= border;
             father_box |= size(WIDTH, EQUAL, ftxui::Terminal::Size().dimx);
@@ -827,3 +832,62 @@ Component App::menu_grade_get()
     });
     return renderer;
 }
+
+message_grade_edit App::get_message_menu_grade_edit(message_list_menu_grade_edit message_id)
+{
+    message_grade_edit result_message;
+    result_message.message_id = message_id;
+    if (message_id == message_list_menu_grade_edit::NONE)
+    {
+        result_message.msg = "👎🏻 当前消息未定义!";
+        result_message.color = ftxui::Color::RedLight;
+    }
+    else if (message_id == message_list_menu_grade_edit::INPUT_ERROR)
+    {
+        result_message.msg = "🐷 信息输入不完整,请检查!";
+        result_message.color = ftxui::Color::RedLight;
+    }
+    else if (message_id == message_list_menu_grade_edit::WAIT_INPUT)
+    {
+        result_message.msg = "😚 请输入...";
+        result_message.color = ftxui::Color::YellowLight;
+    }
+    else if (message_id == message_list_menu_grade_edit::READ_SUCCESSED)
+    {
+        result_message.msg = "🥳 读取成功!";
+        result_message.color = ftxui::Color::GreenLight;
+    }
+    else if (message_id == message_list_menu_grade_edit::READ_FAILED)
+    {
+        result_message.msg = "😅 读取失败!";
+        result_message.color = ftxui::Color::RedLight;
+    }
+    else if (message_id == message_list_menu_grade_edit::DELETE_SUCCESSED)
+    {
+        result_message.msg = "🥳 删除成功!";
+        result_message.color = ftxui::Color::GreenLight;
+    }
+    else if (message_id == message_list_menu_grade_edit::DELETE_FAILED)
+    {
+        result_message.msg = "😅 删除失败!";
+        result_message.color = ftxui::Color::RedLight;
+    }
+    else if (message_id == message_list_menu_grade_edit::WRITE_SUCCESSED_SWITCH_NEXT)
+    {
+        result_message.msg = "🥳 输入成功!已智能为您切换到下一个学生!";
+        result_message.color = ftxui::Color::GreenLight;
+    }
+    else if (message_id == message_list_menu_grade_edit::WRITE_SUCCESSED_LAST)
+    {
+        result_message.msg = "🥳 输入成功!已经是最后一个学生!";
+        result_message.color = ftxui::Color::GreenLight;
+    }
+    else if (message_id == message_list_menu_grade_edit::WRITE_FAILED)
+    {
+        result_message.msg = "😅 写入失败!";
+        result_message.color = ftxui::Color::RedLight;
+    }
+
+    return result_message;
+}
+

@@ -43,3 +43,21 @@ target_link_libraries(GradeManager
         PRIVATE nfd
         PRIVATE xlsxwriter
 )
+
+# 指定grademanager.db文件的源路径
+set(GRADE_MANAGER_DB_SOURCE "${CMAKE_SOURCE_DIR}/GradeManager.db")
+
+
+# 指定grademanager.db文件的目标路径
+set(GRADE_MANAGER_DB_DESTINATION "${CMAKE_BINARY_DIR}")
+
+# 在构建阶段之前，将grademanager.db文件复制到目标路径
+add_custom_command(
+    TARGET GradeManager PRE_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${GRADE_MANAGER_DB_SOURCE}
+    ${GRADE_MANAGER_DB_DESTINATION}
+)
+
+# 如果你希望在安装（make install）时也复制这个文件，可以使用install命令
+install(FILES ${GRADE_MANAGER_DB_SOURCE} DESTINATION ${CMAKE_INSTALL_PREFIX})
